@@ -1,24 +1,42 @@
 {
   "expo": {
-    "name": "dawood-trader",
+    "name": "Dawood Trader",
     "slug": "dawood-trader",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Item ki tasweer lene ke liye camera istemal hoga",
+        "NSPhotoLibraryUsageDescription": "Item ki tasweer chunne ke liye gallery istemal hogi"
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#1a56db",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Item ki tasweer chunne ke liye gallery access chahiye",
+          "cameraPermission": "Item ki tasweer lene ke liye camera access chahiye"
+        }
+      ]
+    ]
   }
 }
