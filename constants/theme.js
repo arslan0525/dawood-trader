@@ -28,6 +28,7 @@ export const CAT = {
   Household:     { bg: '#f3e8ff', text: '#7e22ce', icon: '🏡' },
   Bricks:        { bg: '#ffedd5', text: '#c2410c', icon: '🧱' },
   Drinks:        { bg: '#dbeafe', text: '#1d4ed8', icon: '🥤' },
+  Masala:        { bg: '#fff1e6', text: '#c2410c', icon: '🌶️' },
   default:       { bg: '#f1f5f9', text: '#475569', icon: '📦' },
 };
 

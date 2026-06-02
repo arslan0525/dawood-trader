@@ -7,7 +7,7 @@ import { useCart } from '../context/CartContext';
 import { C, CAT } from '../constants/theme';
 
 export default function ProductDetailScreen({ route, navigation }) {
-  const { product }   = route.params;
+  const { product, switchTab } = route.params;
   const { addToCart } = useCart();
   const [qty, setQty]           = useState(1);
   const [activeImg, setActiveImg] = useState(0);
@@ -28,7 +28,7 @@ export default function ProductDetailScreen({ route, navigation }) {
     for (let i = 0; i < qty; i++) addToCart(product);
     Alert.alert('✅ Cart mein add ho gaya!', `${product.name} ×${qty}`, [
       { text: 'Shopping karein', style: 'cancel' },
-      { text: '🛒 Cart dekhein', onPress: () => navigation.navigate('Cart') },
+      { text: '🛒 Cart dekhein', onPress: () => switchTab ? (navigation.goBack(), switchTab('Cart')) : navigation.navigate('Cart') },
     ]);
   };
 

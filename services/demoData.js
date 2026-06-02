@@ -6,6 +6,18 @@ export const DEMO_PRODUCTS = [
 
   // ══ COLD DRINKS ══════════════════════════════════════
   {
+    id: 'cd-0a', name: 'OG Cola', price: 200, unit: '2.25 Liter',
+    category: 'Cold Drinks', stock: 100, inStock: true, sku: 'OGC-2.25L',
+    description: 'OG Cola 2.25L — family size, best value per ml.',
+    imageUrl: 'https://ogcola.com/wp-content/uploads/2024/09/COLA-LOGO-300x300.png',
+  },
+  {
+    id: 'cd-0b', name: 'OG Cola', price: 150, unit: '1.5 Liter',
+    category: 'Cold Drinks', stock: 150, inStock: true, sku: 'OGC-1.5L',
+    description: 'OG Cola 1.5L — perfect for small gatherings.',
+    imageUrl: 'https://ogcola.com/wp-content/uploads/2024/09/COLA-LOGO-300x300.png',
+  },
+  {
     id: 'cd-1', name: 'OG Cola', price: 130, unit: '1 Liter',
     category: 'Cold Drinks', stock: 200, inStock: true, sku: 'OGC-1L',
     description: 'Pakistan ki apni cola drink. Bold aur refreshing taste.',
@@ -24,15 +36,63 @@ export const DEMO_PRODUCTS = [
     imageUrl: 'https://ogcola.com/wp-content/uploads/2024/09/COLA-LOGO-300x300.png',
   },
   {
+    id: 'cd-4a', name: 'OG Lemon', price: 55, unit: '345ml',
+    category: 'Cold Drinks', stock: 400, inStock: true, sku: 'OGL-345ML',
+    description: 'OG Lemon 345ml — choti bottle, zesty taste.',
+    imageUrl: 'https://ogcola.com/wp-content/uploads/2024/09/OG-LEMON-1.5-300x300.png',
+  },
+  {
+    id: 'cd-4b', name: 'OG Lemon', price: 75, unit: '500ml',
+    category: 'Cold Drinks', stock: 300, inStock: true, sku: 'OGL-500ML',
+    description: 'OG Lemon 500ml — refreshing on the go.',
+    imageUrl: 'https://ogcola.com/wp-content/uploads/2024/09/OG-LEMON-1.5-300x300.png',
+  },
+  {
+    id: 'cd-4c', name: 'OG Lemon', price: 90, unit: '1 Liter',
+    category: 'Cold Drinks', stock: 220, inStock: true, sku: 'OGL-1L',
+    description: 'OG Lemon 1L — zesty lemon flavor for home.',
+    imageUrl: 'https://ogcola.com/wp-content/uploads/2024/09/OG-LEMON-1.5-300x300.png',
+  },
+  {
     id: 'cd-4', name: 'OG Lemon', price: 100, unit: '1.5 Liter',
     category: 'Cold Drinks', stock: 180, inStock: true, sku: 'OGL-1.5L',
     description: 'Zesty lemon flavor — OG Lemon. Garmi ka best solution.',
     imageUrl: 'https://ogcola.com/wp-content/uploads/2024/09/OG-LEMON-1.5-300x300.png',
   },
   {
+    id: 'cd-4d', name: 'OG Lemon', price: 160, unit: '2.25 Liter',
+    category: 'Cold Drinks', stock: 120, inStock: true, sku: 'OGL-2.25L',
+    description: 'OG Lemon 2.25L — family size, best value.',
+    imageUrl: 'https://ogcola.com/wp-content/uploads/2024/09/OG-LEMON-1.5-300x300.png',
+  },
+  {
+    id: 'cd-5a', name: 'OG Orange', price: 55, unit: '345ml',
+    category: 'Cold Drinks', stock: 400, inStock: true, sku: 'OGO-345ML',
+    description: 'OG Orange 345ml — choti bottle, meetha taste.',
+    imageUrl: 'https://ogcola.com/wp-content/uploads/2024/09/OG-Orange-1.5-Ltr-300x300.jpg',
+  },
+  {
+    id: 'cd-5b', name: 'OG Orange', price: 75, unit: '500ml',
+    category: 'Cold Drinks', stock: 300, inStock: true, sku: 'OGO-500ML',
+    description: 'OG Orange 500ml — refreshing on the go.',
+    imageUrl: 'https://ogcola.com/wp-content/uploads/2024/09/OG-Orange-1.5-Ltr-300x300.jpg',
+  },
+  {
+    id: 'cd-5c', name: 'OG Orange', price: 90, unit: '1 Liter',
+    category: 'Cold Drinks', stock: 220, inStock: true, sku: 'OGO-1L',
+    description: 'OG Orange 1L — bold orange flavor for home.',
+    imageUrl: 'https://ogcola.com/wp-content/uploads/2024/09/OG-Orange-1.5-Ltr-300x300.jpg',
+  },
+  {
     id: 'cd-5', name: 'OG Orange', price: 100, unit: '1.5 Liter',
     category: 'Cold Drinks', stock: 160, inStock: true, sku: 'OGO-1.5L',
     description: 'Meetha orange flavor — OG Orange. Refreshing everyday drink.',
+    imageUrl: 'https://ogcola.com/wp-content/uploads/2024/09/OG-Orange-1.5-Ltr-300x300.jpg',
+  },
+  {
+    id: 'cd-5d', name: 'OG Orange', price: 160, unit: '2.25 Liter',
+    category: 'Cold Drinks', stock: 120, inStock: true, sku: 'OGO-2.25L',
+    description: 'OG Orange 2.25L — family size, best value.',
     imageUrl: 'https://ogcola.com/wp-content/uploads/2024/09/OG-Orange-1.5-Ltr-300x300.jpg',
   },
   {
@@ -412,6 +472,160 @@ export const DEMO_PRODUCTS = [
     category: 'Bricks', stock: 2000, inStock: true, sku: 'BRK-CON',
     description: 'Mazboot concrete blocks — construction ke liye best choice.',
     imageUrl: null,
+  },
+
+  // ══ BABA MASALA — RECIPE MIXES ══════════════════════════
+  {
+    id: 'ms-1', name: 'Murghi Masala', price: 80, unit: '50g',
+    category: 'Masala', stock: 200, inStock: true, sku: 'BBA-MRG-50',
+    description: 'Baba Murghi Masala — murghi karahi, handi aur curry ke liye perfect blend. Ghar mein restaurant jaisa taste. 50g packet.',
+    imageUrl: 'https://babaspices.pk/wp-content/uploads/2024/08/Murgi-masla-300x300.png',
+  },
+  {
+    id: 'ms-2a', name: 'Biryani Masala (Degi)', price: 90, unit: '50g',
+    category: 'Masala', stock: 300, inStock: true, sku: 'BBA-BRY-50',
+    description: 'Baba Degi Biryani Masala 50g — authentic degi style biryani ke liye. Khaas khusboo aur rangeen chawal ke liye best.',
+    imageUrl: 'https://babaspices.pk/wp-content/uploads/2024/08/degi-biryani-masala-300x300.png',
+  },
+  {
+    id: 'ms-2b', name: 'Biryani Masala (Degi)', price: 160, unit: '100g',
+    category: 'Masala', stock: 150, inStock: true, sku: 'BBA-BRY-100',
+    description: 'Baba Degi Biryani Masala 100g — badi deg ke liye family size pack. Zyada value, ek hi khaas taste.',
+    imageUrl: 'https://babaspices.pk/wp-content/uploads/2024/08/degi-biryani-masala-300x300.png',
+  },
+  {
+    id: 'ms-3', name: 'Qorma Masala (Degi)', price: 85, unit: '50g',
+    category: 'Masala', stock: 180, inStock: true, sku: 'BBA-QRM-50',
+    description: 'Baba Degi Qorma Masala — shadi aur mehmaan-nawazi ke liye classic qorma taste. Khushbu bharpur, mutton ya chicken dono ke liye.',
+    imageUrl: 'https://babaspices.pk/wp-content/uploads/2024/08/degi-qorma-masala-300x300.png',
+  },
+  {
+    id: 'ms-4', name: 'Achar Gosht Masala (Degi)', price: 80, unit: '50g',
+    category: 'Masala', stock: 160, inStock: true, sku: 'BBA-ACH-50',
+    description: 'Baba Degi Achar Gosht Masala — chatpata aur teekha achar gosht banane ke liye. Dhaaba style flavor ghar mein.',
+    imageUrl: 'https://babaspices.pk/wp-content/uploads/2024/08/degi-achar-gosht-masala-300x300.png',
+  },
+  {
+    id: 'ms-5', name: 'Karahi Gosht Masala (Degi)', price: 80, unit: '50g',
+    category: 'Masala', stock: 200, inStock: true, sku: 'BBA-KRH-50',
+    description: 'Baba Degi Karahi Gosht Masala — iron kadhai mein pakke karahi ka asli taste. Sizzling karahi ghar par banao.',
+    imageUrl: 'https://babaspices.pk/wp-content/uploads/2024/08/degi-karahai-gosht-masala-300x300.png',
+  },
+  {
+    id: 'ms-6', name: 'Broast Masala', price: 75, unit: '50g',
+    category: 'Masala', stock: 220, inStock: true, sku: 'BBA-BRS-50',
+    description: 'Baba Broast Masala — KFC jaisi crispy broast ghar par banao. Chicken ke saath marinate karo, perfect crust guaranteed.',
+    imageUrl: 'https://babaspices.pk/wp-content/uploads/2024/08/Broast-masla-50g-300x300.png',
+  },
+  {
+    id: 'ms-7', name: 'Daal Sabzi Masala', price: 60, unit: '50g',
+    category: 'Masala', stock: 250, inStock: true, sku: 'BBA-DLS-50',
+    description: 'Baba Daal Sabzi Masala — rozana ki daal, bhindi, aloo, aur har sabzi ke liye all-in-one masala. Roz ka khana mazedaar banao.',
+    imageUrl: 'https://babaspices.pk/wp-content/uploads/2024/08/Daal-Sabzi-50g-300x300.png',
+  },
+  {
+    id: 'ms-8', name: 'Tandoori Masala', price: 75, unit: '50g',
+    category: 'Masala', stock: 180, inStock: true, sku: 'BBA-TND-50',
+    description: 'Baba Tandoori Masala — tandoor jaisi khushbu aur rang ghar ke oven ya grill mein. Chicken, fish, aur seekh kabab ke liye perfect.',
+    imageUrl: 'https://babaspices.pk/wp-content/uploads/2024/08/Tandoori-masla-50g-300x300.png',
+  },
+  {
+    id: 'ms-9', name: 'Haleem Mix Masala', price: 85, unit: '50g',
+    category: 'Masala', stock: 140, inStock: true, sku: 'BBA-HLM-50',
+    description: 'Baba Haleem Mix Masala — sardi mein garam haleem ghar par banao. Dal, gehun aur gosht ke saath use karo, restaurant quality taste.',
+    imageUrl: 'https://babaspices.pk/wp-content/uploads/2024/08/Haleem-mix-50g-300x300.png',
+  },
+  {
+    id: 'ms-10', name: 'Pulao Masala', price: 70, unit: '50g',
+    category: 'Masala', stock: 200, inStock: true, sku: 'BBA-PLO-50',
+    description: 'Baba Pulao Masala — safed aur khushboodar yakhni pulao ke liye. Har daana alag, khaas aroma ke saath. Eid aur khushaali ka khana.',
+    imageUrl: 'https://babaspices.pk/wp-content/uploads/2024/08/pulao-masala-300x300.png',
+  },
+  {
+    id: 'ms-11', name: 'Chaat Masala', price: 65, unit: '50g',
+    category: 'Masala', stock: 300, inStock: true, sku: 'BBA-CHT-50',
+    description: 'Baba Chaat Masala — dahi bhalle, fruit chaat, samosa, aur chaatpati cheezon par sprinkle karo. Bazaar jaisa chatpata flavor.',
+    imageUrl: 'https://babaspices.pk/wp-content/uploads/2024/08/chaat-masala-powder-300x300.png',
+  },
+  {
+    id: 'ms-12', name: 'Curry Masala Powder', price: 70, unit: '50g',
+    category: 'Masala', stock: 200, inStock: true, sku: 'BBA-CRY-50',
+    description: 'Baba Curry Masala Powder — chicken curry, mutton curry, aur vegetable curry ke liye balanced blend. Roz ki cooking simple aur delicious.',
+    imageUrl: 'https://babaspices.pk/wp-content/uploads/2024/08/curry-300x300.png',
+  },
+  {
+    id: 'ms-13', name: 'Pasta Masala', price: 55, unit: '35g',
+    category: 'Masala', stock: 250, inStock: true, sku: 'BBA-PST-35',
+    description: 'Baba Pasta Masala — bacchon ka favorite pasta ghar par banao. Italian-Pakistani fusion taste, koi bhi pasta ya noodles ke saath use karo.',
+    imageUrl: 'https://babaspices.pk/wp-content/uploads/2024/08/Pasta-masla-300x300.png',
+  },
+
+  // ══ BABA MASALA — PLAIN SPICES ══════════════════════════
+  {
+    id: 'ms-14a', name: 'Garam Masala Powder', price: 40, unit: '25g',
+    category: 'Masala', stock: 300, inStock: true, sku: 'BBA-GRM-25',
+    description: 'Baba Garam Masala 25g — elaichi, laung, dalchini, zeera ka khaas blend. Har salan keakhir mein dalo, khushbu double ho jaegi.',
+    imageUrl: 'https://babaspices.pk/wp-content/uploads/2024/08/garam-masala-300x300.png',
+  },
+  {
+    id: 'ms-14b', name: 'Garam Masala Powder', price: 70, unit: '50g',
+    category: 'Masala', stock: 200, inStock: true, sku: 'BBA-GRM-50',
+    description: 'Baba Garam Masala 50g — value pack. Ghar ki roz ki cooking ke liye. Biryani, qorma, karahi sab mein kaam aata hai.',
+    imageUrl: 'https://babaspices.pk/wp-content/uploads/2024/08/garam-masala-300x300.png',
+  },
+  {
+    id: 'ms-15a', name: 'Red Chili Powder', price: 50, unit: '50g',
+    category: 'Masala', stock: 400, inStock: true, sku: 'BBA-RCH-50',
+    description: 'Baba Lal Mirch Powder 50g — taza pisi hui lal mirch. Teekha flavor, gehraa rang. Har salan ki zaroorat.',
+    imageUrl: 'https://babaspices.pk/wp-content/uploads/2024/08/red-chilli-50gm-300x300.png',
+  },
+  {
+    id: 'ms-15b', name: 'Red Chili Powder', price: 90, unit: '100g',
+    category: 'Masala', stock: 250, inStock: true, sku: 'BBA-RCH-100',
+    description: 'Baba Lal Mirch Powder 100g — bulk pack, wholesale ke liye best. Restaurants aur ghar dono ke liye economical choice.',
+    imageUrl: 'https://babaspices.pk/wp-content/uploads/2024/08/red-chilli-50gm-300x300.png',
+  },
+  {
+    id: 'ms-16', name: 'Turmeric Powder (Haldi)', price: 45, unit: '50g',
+    category: 'Masala', stock: 350, inStock: true, sku: 'BBA-HLD-50',
+    description: 'Baba Haldi Powder 50g — pure peeli haldi, rang aur sehat dono ke liye. Har Pakistani salan mein lazmi ingredient.',
+    imageUrl: 'https://babaspices.pk/wp-content/uploads/2024/08/tumeric-50g-1-300x300.png',
+  },
+  {
+    id: 'ms-17', name: 'Coriander Powder (Dhania)', price: 40, unit: '50g',
+    category: 'Masala', stock: 300, inStock: true, sku: 'BBA-DHN-50',
+    description: 'Baba Dhania Powder 50g — fresh pisa hua dhania. Salan ko khushbu aur mild flavor deta hai. Roz ki cooking ka essential.',
+    imageUrl: 'https://babaspices.pk/wp-content/uploads/2024/08/Coriander-powder-50g-1-300x300.png',
+  },
+  {
+    id: 'ms-18', name: 'Cumin Seed Powder (Zeera)', price: 40, unit: '25g',
+    category: 'Masala', stock: 280, inStock: true, sku: 'BBA-ZRA-25',
+    description: 'Baba Zeera Powder 25g — bhuna hua zeera pis ke banaya gaya. Raita, daal, aur salad mein dalo. Hazam karne mein bhi madad karta hai.',
+    imageUrl: 'https://babaspices.pk/wp-content/uploads/2024/08/cumin-seed-powder-300x300.png',
+  },
+  {
+    id: 'ms-19', name: 'Black Pepper Powder (Kali Mirch)', price: 60, unit: '25g',
+    category: 'Masala', stock: 200, inStock: true, sku: 'BBA-KLM-25',
+    description: 'Baba Kali Mirch Powder 25g — teekhi aur khushboodar kali mirch. Soup, steak, aur grilled items ke liye perfect. Premium quality.',
+    imageUrl: 'https://babaspices.pk/wp-content/uploads/2024/08/black-peper-50gm-300x300.png',
+  },
+  {
+    id: 'ms-20', name: 'Ginger Powder (Adrak)', price: 55, unit: '50g',
+    category: 'Masala', stock: 220, inStock: true, sku: 'BBA-ADK-50',
+    description: 'Baba Adrak Powder 50g — sookha pisa adrak. Chai, haleem, nihari aur salan mein asani se use karo. Fresh adrak ka substitute.',
+    imageUrl: 'https://babaspices.pk/wp-content/uploads/2024/08/ginger-powder-300x300.png',
+  },
+  {
+    id: 'ms-21', name: 'Garlic Powder (Lahsan)', price: 55, unit: '50g',
+    category: 'Masala', stock: 220, inStock: true, sku: 'BBA-LSN-50',
+    description: 'Baba Lahsan Powder 50g — peela pisa lahsan. Broast, pasta, aur marination ke liye. Fresh lahsan chhilne ki jhanjhat khatam.',
+    imageUrl: 'https://babaspices.pk/wp-content/uploads/2024/08/garlic-powder-300x300.png',
+  },
+  {
+    id: 'ms-22', name: 'Kasuri Methi', price: 45, unit: '20g',
+    category: 'Masala', stock: 180, inStock: true, sku: 'BBA-KMT-20',
+    description: 'Baba Kasuri Methi 20g — sukhi methi ke patte. Butter chicken, dal makhni aur karahi mein dal ke restaurant jaisa taste aata hai.',
+    imageUrl: 'https://babaspices.pk/wp-content/uploads/2024/08/kasuri-methi-300x300.png',
   },
 ];
 

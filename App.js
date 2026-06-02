@@ -6,7 +6,6 @@ import { ActivityIndicator, View, Text } from 'react-native';
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
   document.documentElement.style.cssText = 'height:100%;overflow:hidden;';
   document.body.style.cssText = 'height:100%;overflow:hidden;margin:0;padding:0;';
-  // Force visible scrollbar on all scrollable elements
   const css = document.createElement('style');
   css.textContent = `
     ::-webkit-scrollbar { width: 10px; height: 10px; }
@@ -15,29 +14,38 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
     ::-webkit-scrollbar-thumb:hover { background: #475569; }
     ::-webkit-scrollbar-corner { background: #e2e8f0; }
     * { scrollbar-width: thin; scrollbar-color: #94a3b8 #e2e8f0; }
-    [data-scroll], div[style*="overflow-y"] { overflow-y: scroll !important; }
+    [data-scroll], div[style*="overflow-y: scroll"] { overflow-y: scroll !important; }
   `;
   document.head.appendChild(css);
 }
+
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
-import { AuthProvider, useAuth } from './context/AuthContext';
-import { CartProvider, useCart } from './context/CartContext';
+import { AuthProvider, useAuth }       from './context/AuthContext';
+import { CartProvider, useCart }       from './context/CartContext';
+import { ToastProvider }               from './context/ToastContext';
+import { LanguageProvider }            from './context/LanguageContext';
+import { AppDataProvider }             from './context/AppDataContext';
 
-import LoginScreen from './screens/LoginScreen';
-import SignupScreen from './screens/SignupScreen';
-import HomeScreen from './screens/HomeScreen';
+import LoginScreen         from './screens/LoginScreen';
+import SignupScreen        from './screens/SignupScreen';
+import HomeScreen          from './screens/HomeScreen';
 import ProductDetailScreen from './screens/ProductDetailScreen';
-import CartScreen from './screens/CartScreen';
-import AdminScreen from './screens/AdminScreen';
-import AddItemScreen from './screens/AddItemScreen';
-import ProfileScreen from './screens/ProfileScreen';
-import WebLayout from './screens/WebLayout';
+import CartScreen          from './screens/CartScreen';
+import AdminScreen         from './screens/AdminScreen';
+import AddItemScreen       from './screens/AddItemScreen';
+import ProfileScreen       from './screens/ProfileScreen';
+import WebLayout           from './screens/WebLayout';
+import DashboardScreen     from './screens/DashboardScreen';
+import CustomersScreen     from './screens/CustomersScreen';
+import OrdersScreen        from './screens/OrdersScreen';
+import OrderHistoryScreen  from './screens/OrderHistoryScreen';
+import RecoveryScreen      from './screens/RecoveryScreen';
 
 const Stack = createStackNavigator();
-const Tab = createBottomTabNavigator();
+const Tab   = createBottomTabNavigator();
 
 function CartTabIcon({ focused }) {
   const { itemCount } = useCart();
@@ -61,6 +69,7 @@ function CartTabIcon({ focused }) {
 }
 
 function MobileTabs() {
+  const { isAdmin } = useAuth();
   return (
     <Tab.Navigator
       screenOptions={{
@@ -75,16 +84,26 @@ function MobileTabs() {
         },
         tabBarActiveTintColor: '#1a56db',
         tabBarInactiveTintColor: '#9ca3af',
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '700', marginTop: 2 },
+        tabBarLabelStyle: { fontSize: 10, fontWeight: '700', marginTop: 2 },
       }}
     >
+      <Tab.Screen
+        name="Dashboard"
+        component={DashboardScreen}
+        options={{
+          tabBarLabel: 'Dashboard',
+          tabBarIcon: ({ focused }) => (
+            <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.55 }}>📊</Text>
+          ),
+        }}
+      />
       <Tab.Screen
         name="Home"
         component={HomeScreen}
         options={{
-          tabBarLabel: 'Home',
+          tabBarLabel: 'Products',
           tabBarIcon: ({ focused }) => (
-            <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.55 }}>🏠</Text>
+            <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.55 }}>🏠</Text>
           ),
         }}
       />
@@ -96,35 +115,25 @@ function MobileTabs() {
           tabBarIcon: ({ focused }) => <CartTabIcon focused={focused} />,
         }}
       />
-      <Tab.Screen
-        name="AddItem"
-        component={AddItemScreen}
-        initialParams={{ product: null, tabMode: true }}
-        options={{
-          unmountOnBlur: true,
-          tabBarLabel: 'Add Item',
-          tabBarIcon: ({ focused }) => (
-            <View style={{
-              width: 42, height: 42, borderRadius: 21,
-              backgroundColor: focused ? '#1a56db' : '#e0e7ff',
-              justifyContent: 'center', alignItems: 'center',
-              marginTop: -10,
-              shadowColor: '#1a56db', shadowOffset: { width: 0, height: 3 },
-              shadowOpacity: focused ? 0.35 : 0, shadowRadius: 8, elevation: focused ? 6 : 0,
-            }}>
-              <Text style={{ fontSize: 22, color: focused ? '#fff' : '#1a56db' }}>＋</Text>
-            </View>
-          ),
-          tabBarLabelStyle: { fontSize: 11, fontWeight: '700', marginTop: 2, color: '#1a56db' },
-        }}
-      />
+      {isAdmin && (
+        <Tab.Screen
+          name="Customers"
+          component={CustomersScreen}
+          options={{
+            tabBarLabel: 'Customers',
+            tabBarIcon: ({ focused }) => (
+              <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.55 }}>👥</Text>
+            ),
+          }}
+        />
+      )}
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
         options={{
           tabBarLabel: 'Profile',
           tabBarIcon: ({ focused }) => (
-            <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.55 }}>👤</Text>
+            <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.55 }}>👤</Text>
           ),
         }}
       />
@@ -150,14 +159,17 @@ function AppNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {user ? (
         <>
-          <Stack.Screen name="Main" component={MainLayout} />
-          <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
-          <Stack.Screen name="Admin" component={AdminScreen} />
-          <Stack.Screen name="AddItem" component={AddItemScreen} />
+          <Stack.Screen name="Main"          component={MainLayout}         />
+          <Stack.Screen name="ProductDetail" component={ProductDetailScreen}/>
+          <Stack.Screen name="Admin"         component={AdminScreen}        />
+          <Stack.Screen name="AddItem"       component={AddItemScreen}      />
+          <Stack.Screen name="Orders"        component={OrdersScreen}       />
+          <Stack.Screen name="OrderHistory"  component={OrderHistoryScreen} />
+          <Stack.Screen name="Recovery"      component={RecoveryScreen}     />
         </>
       ) : (
         <>
-          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="Login"  component={LoginScreen}  />
           <Stack.Screen name="Signup" component={SignupScreen} />
         </>
       )}
@@ -168,14 +180,20 @@ function AppNavigator() {
 export default function App() {
   return (
     <View style={{ flex: 1, ...(Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}) }}>
-      <AuthProvider>
-        <CartProvider>
-          <NavigationContainer>
-            <StatusBar style="light" />
-            <AppNavigator />
-          </NavigationContainer>
-        </CartProvider>
-      </AuthProvider>
+      <ToastProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            <AppDataProvider>
+              <CartProvider>
+                <NavigationContainer>
+                  <StatusBar style="light" />
+                  <AppNavigator />
+                </NavigationContainer>
+              </CartProvider>
+            </AppDataProvider>
+          </AuthProvider>
+        </LanguageProvider>
+      </ToastProvider>
     </View>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useContext, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
   ScrollView, Image, ActivityIndicator, Alert,
@@ -11,8 +11,10 @@ import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage
 import { db, storage, IS_DEMO } from '../services/firebase';
 import { C, CAT, UNIT_TYPES } from '../constants/theme';
 import InputRow from '../components/InputRow';
+import CropModal from '../components/CropModal';
+import { useToast } from '../context/ToastContext';
 
-const CATEGORIES = ['Cold Drinks', 'Pickles', 'Pasta', 'Grocery', 'Snacks', 'Household', 'Bricks'];
+const CATEGORIES = ['Cold Drinks', 'Masala', 'Pickles', 'Pasta', 'Grocery', 'Snacks', 'Household', 'Bricks'];
 const MAX_IMAGES = 5;
 
 async function compressImage(uri) {
@@ -39,7 +41,9 @@ export default function AddItemScreen({ route, navigation }) {
   const [sku,         setSku]         = useState(editProduct?.sku || '');
   const [weight,      setWeight]      = useState(editProduct?.weight || '');
   const [saving,      setSaving]      = useState(false);
-  const [savedBanner, setSavedBanner] = useState(false);   // tab-mode success banner
+  const [savedBanner, setSavedBanner] = useState(false);
+  const { showToast } = useToast();
+  const scrollRef = useRef(null);
 
   /* ── Multi-image state ──
      Each entry: { uri, isNew, existingUrl?, existingPath? }          */
@@ -69,12 +73,48 @@ export default function AddItemScreen({ route, navigation }) {
   const weightRef = useRef(null);
   const descRef   = useRef(null);
 
+  /* ── Scroll to top when form mounts ── */
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, []);
+
   /* ── Reset form (tab mode: after successful save) ── */
   const resetForm = () => {
     setName(''); setPrice(''); setDescription('');
     setCategory(''); setUnit('piece'); setStock('');
     setInStock(true); setSku(''); setWeight('');
     setImages([]);
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
+  /* ── Crop Modal state ── */
+  const [cropUri, setCropUri]         = useState(null);
+  const [cropVisible, setCropVisible] = useState(false);
+  const cropResolveRef = useRef(null);
+
+  // Show crop modal and wait for result (web only; native uses allowsEditing)
+  const cropImage = (uri) => new Promise((resolve) => {
+    cropResolveRef.current = resolve;
+    setCropUri(uri);
+    setCropVisible(true);
+  });
+
+  const handleCropConfirm = async (croppedUri) => {
+    setCropVisible(false);
+    setCropUri(null);
+    if (cropResolveRef.current) {
+      cropResolveRef.current(croppedUri);
+      cropResolveRef.current = null;
+    }
+  };
+
+  const handleCropCancel = () => {
+    setCropVisible(false);
+    setCropUri(null);
+    if (cropResolveRef.current) {
+      cropResolveRef.current(null); // null = cancelled
+      cropResolveRef.current = null;
+    }
   };
 
   /* ── Image helpers ── */
@@ -83,7 +123,13 @@ export default function AddItemScreen({ route, navigation }) {
       Alert.alert('Limit Reached', `Maximum ${MAX_IMAGES} images allowed`);
       return;
     }
-    const compressed = await compressImage(uri);
+    // On web, show our crop modal; on native, allowsEditing already handled it
+    let finalUri = uri;
+    if (Platform.OS === 'web') {
+      finalUri = await cropImage(uri);
+      if (!finalUri) return; // user cancelled crop
+    }
+    const compressed = await compressImage(finalUri);
     setImages((prev) => [...prev, { uri: compressed, isNew: true }]);
   };
 
@@ -92,7 +138,10 @@ export default function AddItemScreen({ route, navigation }) {
     if (status !== 'granted') { Alert.alert('Permission chahiye', 'Gallery access allow karein'); return; }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true, aspect: [4, 3], quality: 0.9,
+      // allowsEditing only works on native; web uses our CropModal
+      allowsEditing: Platform.OS !== 'web',
+      aspect: [4, 3],
+      quality: 0.9,
     });
     if (!result.canceled) await addImageFromUri(result.assets[0].uri);
   };
@@ -101,7 +150,9 @@ export default function AddItemScreen({ route, navigation }) {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') { Alert.alert('Permission chahiye', 'Camera access allow karein'); return; }
     const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true, aspect: [4, 3], quality: 0.9,
+      allowsEditing: Platform.OS !== 'web',
+      aspect: [4, 3],
+      quality: 0.9,
     });
     if (!result.canceled) await addImageFromUri(result.assets[0].uri);
   };
@@ -113,6 +164,32 @@ export default function AddItemScreen({ route, navigation }) {
           setImages((prev) => prev.filter((_, i) => i !== index))
       },
     ]);
+  };
+
+  /* ── Re-crop an existing image ── */
+  const reCropImage = async (index) => {
+    const currentUri = images[index]?.uri;
+    if (!currentUri) return;
+
+    if (Platform.OS !== 'web') {
+      // On native: re-open gallery to pick & crop again
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') return;
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true, aspect: [4, 3], quality: 0.9,
+      });
+      if (!result.canceled) {
+        const compressed = await compressImage(result.assets[0].uri);
+        setImages(prev => prev.map((img, i) => i === index ? { ...img, uri: compressed, isNew: true } : img));
+      }
+      return;
+    }
+    // Web: open crop modal with current URI
+    const croppedUri = await cropImage(currentUri);
+    if (!croppedUri) return;
+    const compressed = await compressImage(croppedUri);
+    setImages(prev => prev.map((img, i) => i === index ? { ...img, uri: compressed, isNew: true } : img));
   };
 
   /* ── Upload single image ── */
@@ -133,12 +210,12 @@ export default function AddItemScreen({ route, navigation }) {
     if (!category)                  { Alert.alert('Error', 'Category select karein'); return; }
 
     if (IS_DEMO) {
+      showToast(editProduct ? 'Product updated! (Demo)' : 'Product added! (Demo)', 'info');
       if (tabMode) {
         resetForm();
         setSavedBanner(true);
         setTimeout(() => setSavedBanner(false), 3000);
       } else {
-        Alert.alert('✅ Demo Mode', 'Real save ke liye Firebase connect karein.');
         navigation.goBack();
       }
       return;
@@ -185,26 +262,27 @@ export default function AddItemScreen({ route, navigation }) {
 
       if (editProduct) {
         await updateDoc(doc(db, 'products', editProduct.id), data);
+        showToast(`"${data.name}" updated!`, 'success');
         if (tabMode) {
           resetForm();
           setSavedBanner(true);
           setTimeout(() => setSavedBanner(false), 3000);
         } else {
-          Alert.alert('✅ Updated!', 'Product update ho gaya');
           navigation.goBack();
         }
       } else {
         await addDoc(collection(db, 'products'), { ...data, createdAt: serverTimestamp() });
+        showToast(`"${data.name}" added!`, 'success');
         if (tabMode) {
           resetForm();
           setSavedBanner(true);
           setTimeout(() => setSavedBanner(false), 3000);
         } else {
-          Alert.alert('✅ Saved!', 'Naya product add ho gaya');
           navigation.goBack();
         }
       }
     } catch (e) {
+      showToast('Save nahi ho saka', 'error');
       Alert.alert('Error', 'Save nahi ho saka: ' + e.message);
     } finally {
       setSaving(false);
@@ -223,33 +301,60 @@ export default function AddItemScreen({ route, navigation }) {
 
   /* ── UI ── */
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={{ flex: 1, minHeight: 0 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      {/* Crop modal (web only) */}
+      <CropModal
+        visible={cropVisible}
+        imageUri={cropUri}
+        onCrop={handleCropConfirm}
+        onCancel={handleCropCancel}
+      />
       <View style={st.root}>
 
-        {/* Header */}
-        <View style={st.header}>
-          {tabMode ? (
-            <TouchableOpacity onPress={resetForm} style={st.backBtn}>
-              <Text style={[st.backText, { fontSize: 18 }]}>↺</Text>
+        {/* Header — compact when tabMode on web (WebLayout already has top nav) */}
+        {tabMode && Platform.OS === 'web' ? (
+          <View style={st.headerCompact}>
+            <TouchableOpacity onPress={resetForm} style={st.compactResetBtn}>
+              <Text style={st.compactResetTxt}>↺ Reset</Text>
             </TouchableOpacity>
-          ) : (
-            <TouchableOpacity onPress={() => navigation.goBack()} style={st.backBtn}>
-              <Text style={st.backText}>‹</Text>
+            <Text style={st.compactTitle}>
+              {editProduct ? 'Edit Product' : 'Add New Product'}
+            </Text>
+            <TouchableOpacity
+              style={[st.compactSaveBtn, saving && { opacity: 0.6 }]}
+              onPress={handleSave}
+              disabled={saving}
+            >
+              {saving
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Text style={st.compactSaveTxt}>✅ Save</Text>}
             </TouchableOpacity>
-          )}
-          <Text style={st.headerTitle}>
-            {editProduct ? 'Product Edit Karein' : 'Naya Product Add Karein'}
-          </Text>
-          <TouchableOpacity
-            style={[st.saveHeaderBtn, saving && { opacity: 0.6 }]}
-            onPress={handleSave}
-            disabled={saving}
-          >
-            {saving
-              ? <ActivityIndicator color="#fff" size="small" />
-              : <Text style={st.saveHeaderBtnTxt}>Save</Text>}
-          </TouchableOpacity>
-        </View>
+          </View>
+        ) : (
+          <View style={st.header}>
+            {tabMode ? (
+              <TouchableOpacity onPress={resetForm} style={st.backBtn}>
+                <Text style={[st.backText, { fontSize: 18 }]}>↺</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity onPress={() => navigation.goBack()} style={st.backBtn}>
+                <Text style={st.backText}>‹</Text>
+              </TouchableOpacity>
+            )}
+            <Text style={st.headerTitle}>
+              {editProduct ? 'Product Edit Karein' : 'Naya Product Add Karein'}
+            </Text>
+            <TouchableOpacity
+              style={[st.saveHeaderBtn, saving && { opacity: 0.6 }]}
+              onPress={handleSave}
+              disabled={saving}
+            >
+              {saving
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Text style={st.saveHeaderBtnTxt}>Save</Text>}
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Success banner (tab mode) */}
         {savedBanner && (
@@ -259,7 +364,8 @@ export default function AddItemScreen({ route, navigation }) {
         )}
 
         <ScrollView
-          style={{ flex: 1, overflow: 'hidden' }}
+          ref={scrollRef}
+          style={{ flex: 1 }}
           contentContainerStyle={st.body}
           showsVerticalScrollIndicator
           keyboardShouldPersistTaps="handled"
@@ -271,10 +377,19 @@ export default function AddItemScreen({ route, navigation }) {
             {/* Primary preview */}
             <TouchableOpacity
               style={[st.primaryImgBox, !primaryUri && { borderStyle: 'dashed' }]}
-              onPress={pickImage}
+              onPress={primaryUri ? () => reCropImage(0) : pickImage}
+              activeOpacity={0.85}
             >
               {primaryUri ? (
-                <Image source={{ uri: primaryUri }} style={st.primaryImg} resizeMode="contain" />
+                <>
+                  <Image source={{ uri: primaryUri }} style={st.primaryImg} resizeMode="contain" />
+                  {/* Edit overlay hint */}
+                  <View style={st.editOverlay}>
+                    <View style={st.editBadge}>
+                      <Text style={st.editBadgeTxt}>✂️  Tap to Crop</Text>
+                    </View>
+                  </View>
+                </>
               ) : (
                 <View style={[st.imgPlaceholder, { backgroundColor: cat.bg }]}>
                   <Text style={{ fontSize: 52 }}>{cat.icon}</Text>
@@ -299,6 +414,11 @@ export default function AddItemScreen({ route, navigation }) {
                         <Text style={st.primaryBadgeTxt}>Main</Text>
                       </View>
                     )}
+                    {/* Re-crop button */}
+                    <TouchableOpacity style={st.thumbCrop} onPress={() => reCropImage(idx)}>
+                      <Text style={{ fontSize: 11 }}>✂️</Text>
+                    </TouchableOpacity>
+                    {/* Remove button */}
                     <TouchableOpacity style={st.thumbRemove} onPress={() => removeImage(idx)}>
                       <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>✕</Text>
                     </TouchableOpacity>
@@ -528,7 +648,7 @@ export default function AddItemScreen({ route, navigation }) {
 }
 
 const st = StyleSheet.create({
-  root:  { flex: 1, backgroundColor: C.bg },
+  root:  { flex: 1, minHeight: 0, backgroundColor: C.bg },
 
   header: {
     backgroundColor: C.primary,
@@ -541,6 +661,14 @@ const st = StyleSheet.create({
   headerTitle:    { flex: 1, color: '#fff', fontSize: 17, fontWeight: '800' },
   saveHeaderBtn:  { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 7, borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
   saveHeaderBtnTxt:{ color: '#fff', fontSize: 14, fontWeight: '700' },
+
+  /* Compact header for tabMode on web — no duplicate blue bar */
+  headerCompact:  { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.border },
+  compactTitle:   { flex: 1, fontSize: 15, fontWeight: '800', color: C.text, textAlign: 'center' },
+  compactResetBtn:{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: C.bg },
+  compactResetTxt:{ fontSize: 12, fontWeight: '600', color: C.textMid },
+  compactSaveBtn: { backgroundColor: C.primary, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 7 },
+  compactSaveTxt: { color: '#fff', fontSize: 12, fontWeight: '700' },
 
   body: { padding: 16, paddingBottom: 48 },
 
@@ -563,7 +691,14 @@ const st = StyleSheet.create({
   thumb:     { width: '100%', height: '100%' },
   primaryBadge:    { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(37,99,235,0.8)', paddingVertical: 2, alignItems: 'center' },
   primaryBadgeTxt: { color: '#fff', fontSize: 8, fontWeight: '800' },
-  thumbRemove: { position: 'absolute', top: 3, right: 3, backgroundColor: 'rgba(220,38,38,0.85)', borderRadius: 9, width: 18, height: 18, justifyContent: 'center', alignItems: 'center' },
+  /* Edit overlay on primary image */
+  editOverlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'flex-end', alignItems: 'center', paddingBottom: 10 },
+  editBadge:   { backgroundColor: 'rgba(0,0,0,0.52)', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 5 },
+  editBadgeTxt:{ color: '#fff', fontSize: 12, fontWeight: '700' },
+
+  /* Thumbnail buttons */
+  thumbCrop:   { position: 'absolute', top: 3, left: 3, backgroundColor: 'rgba(37,99,235,0.85)', borderRadius: 9, width: 20, height: 20, justifyContent: 'center', alignItems: 'center' },
+  thumbRemove: { position: 'absolute', top: 3, right: 3, backgroundColor: 'rgba(220,38,38,0.85)', borderRadius: 9, width: 20, height: 20, justifyContent: 'center', alignItems: 'center' },
   thumbAdd:  { width: 72, height: 72, borderRadius: 10, borderWidth: 2, borderColor: C.primary, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', backgroundColor: C.primaryLight },
 
   imgBtns:   { flexDirection: 'row', gap: 10 },

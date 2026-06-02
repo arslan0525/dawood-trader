@@ -1,18 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity, StyleSheet,
-  Image, Alert, ActivityIndicator, Platform,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet,
+  Image, Alert, ActivityIndicator, Platform, TextInput,
+  useWindowDimensions,
 } from 'react-native';
+import { useToast } from '../context/ToastContext';
+import { useAppData } from '../context/AppDataContext';
 import { collection, onSnapshot, orderBy, query, deleteDoc, doc } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { db, storage, IS_DEMO } from '../services/firebase';
 import { DEMO_PRODUCTS } from '../services/demoData';
 import { C, CAT } from '../constants/theme';
 
-export default function AdminScreen({ navigation }) {
+export default function AdminScreen({ navigation, switchTab }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading]   = useState(true);
-  const isWeb = Platform.OS === 'web';
+  const [search, setSearch]     = useState('');
+  const { showToast }           = useToast();
+  const { setProductStock, getStock } = useAppData();
+  const { width }               = useWindowDimensions();
+  const isWeb                   = Platform.OS === 'web';
 
   useEffect(() => {
     if (IS_DEMO) { setProducts(DEMO_PRODUCTS); setLoading(false); return; }
@@ -24,39 +31,84 @@ export default function AdminScreen({ navigation }) {
     return unsub;
   }, []);
 
+  const performDelete = async (item) => {
+    if (IS_DEMO) {
+      setProducts(p => p.filter(x => x.id !== item.id));
+      showToast(`"${item.name}" deleted`, 'success');
+      return;
+    }
+    try {
+      await deleteDoc(doc(db, 'products', item.id));
+      const paths = item.imagePaths?.length ? item.imagePaths : (item.imagePath ? [item.imagePath] : []);
+      for (const path of paths) {
+        await deleteObject(ref(storage, path)).catch(() => {});
+      }
+      showToast(`"${item.name}" deleted`, 'success');
+    } catch { showToast('Delete nahi ho saka', 'error'); }
+  };
+
   const handleDelete = (item) => {
+    if (Platform.OS === 'web') {
+      if (window.confirm(`"${item.name}" permanently delete ho jaega?`)) performDelete(item);
+      return;
+    }
     Alert.alert('Delete?', `"${item.name}" permanently delete ho jaega`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: async () => {
-        if (IS_DEMO) { setProducts((p) => p.filter((x) => x.id !== item.id)); return; }
-        try {
-          await deleteDoc(doc(db, 'products', item.id));
-          if (item.imagePath) await deleteObject(ref(storage, item.imagePath)).catch(() => {});
-        } catch { Alert.alert('Error', 'Delete nahi ho saka'); }
-      }},
+      { text: 'Delete', style: 'destructive', onPress: () => performDelete(item) },
     ]);
   };
+
+  const filtered = search.trim()
+    ? products.filter(p =>
+        p.name?.toLowerCase().includes(search.toLowerCase()) ||
+        p.category?.toLowerCase().includes(search.toLowerCase())
+      )
+    : products;
 
   const cats    = [...new Set(products.map((p) => p.category).filter(Boolean))];
   const avgPrice = products.length
     ? Math.round(products.reduce((s, p) => s + (p.price || 0), 0) / products.length)
     : 0;
+  const lowStockCount = products.filter(p => getStock(p.id, p.stock ?? 0) <= 10).length;
 
   const stats = [
-    { label: 'Total Products', value: products.length, icon: '📦', color: '#dbeafe', textColor: C.primary },
-    { label: 'Categories',     value: cats.length,     icon: '🏷️', color: '#dcfce7', textColor: '#15803d' },
-    { label: 'Avg. Price',     value: `Rs. ${avgPrice.toLocaleString()}`, icon: '💰', color: '#fef9c3', textColor: '#a16207' },
+    { label: 'Total Products', value: products.length,        icon: '📦', color: '#dbeafe', textColor: C.primary },
+    { label: 'Categories',     value: cats.length,            icon: '🏷️', color: '#dcfce7', textColor: '#15803d' },
+    { label: 'Low Stock',      value: lowStockCount,          icon: '⚠️', color: '#ffedd5', textColor: '#c2410c' },
+    { label: 'Avg. Price',     value: `Rs.${avgPrice.toLocaleString()}`, icon: '💰', color: '#fef9c3', textColor: '#a16207' },
   ];
 
-  const renderItem = ({ item }) => {
-    const cat    = CAT[item.category] || CAT.default;
-    const imgUri = item.imageUrls?.[0] || item.imageUrl || null;
+  const handleStockChange = (item, delta) => {
+    const current = getStock(item.id, item.stock ?? 0);
+    const newQty = Math.max(0, current + delta);
+    setProductStock(item.id, newQty);
+  };
+
+  const handleStockInput = (item, val) => {
+    const n = parseInt(val);
+    if (!isNaN(n) && n >= 0) setProductStock(item.id, n);
+  };
+
+  const renderCard = (item) => {
+    const cat     = CAT[item.category] || CAT.default;
+    const imgUri  = item.imageUrls?.[0] || item.imageUrl || null;
+    const stock   = getStock(item.id, item.stock ?? 0);
+    const isLow   = stock <= 10;
+    const isOut   = stock === 0;
+
     return (
-      <View style={styles.card}>
+      <View key={item.id} style={styles.card}>
+        {/* Image */}
         {imgUri
           ? <Image source={{ uri: imgUri }} style={styles.cardImg} />
-          : <View style={[styles.cardImg, { backgroundColor: cat.bg, justifyContent: 'center', alignItems: 'center' }]}><Text style={{ fontSize: 28 }}>{cat.icon}</Text></View>
+          : (
+            <View style={[styles.cardImg, { backgroundColor: cat.bg, justifyContent: 'center', alignItems: 'center' }]}>
+              <Text style={{ fontSize: 24 }}>{cat.icon}</Text>
+            </View>
+          )
         }
+
+        {/* Info */}
         <View style={styles.cardBody}>
           <Text style={styles.cardName} numberOfLines={2}>{item.name}</Text>
           {item.category && (
@@ -64,10 +116,62 @@ export default function AdminScreen({ navigation }) {
               <Text style={[styles.catPillText, { color: cat.text }]}>{item.category}</Text>
             </View>
           )}
+          <Text style={styles.cardUnit}>{item.unit}</Text>
           <Text style={styles.cardPrice}>Rs. {item.price?.toLocaleString()}</Text>
+
+          {/* Stock control */}
+          <View style={styles.stockRow}>
+            <TouchableOpacity
+              style={styles.stockBtn}
+              onPress={() => handleStockChange(item, -1)}
+              disabled={stock <= 0}
+            >
+              <Text style={[styles.stockBtnTxt, stock <= 0 && { opacity: 0.3 }]}>−</Text>
+            </TouchableOpacity>
+            <TextInput
+              style={[
+                styles.stockInput,
+                isOut && { borderColor: '#b91c1c', color: '#b91c1c' },
+                isLow && !isOut && { borderColor: '#c2410c', color: '#c2410c' },
+              ]}
+              value={stock.toString()}
+              onChangeText={v => handleStockInput(item, v)}
+              keyboardType="numeric"
+              selectTextOnFocus
+            />
+            <TouchableOpacity
+              style={styles.stockBtn}
+              onPress={() => handleStockChange(item, 1)}
+            >
+              <Text style={styles.stockBtnTxt}>＋</Text>
+            </TouchableOpacity>
+            <View style={[
+              styles.stockTag,
+              isOut ? { backgroundColor: '#fee2e2' } : isLow ? { backgroundColor: '#ffedd5' } : { backgroundColor: '#dcfce7' },
+            ]}>
+              <Text style={[
+                styles.stockTagTxt,
+                isOut ? { color: '#b91c1c' } : isLow ? { color: '#c2410c' } : { color: '#15803d' },
+              ]}>
+                {isOut ? 'Out' : isLow ? 'Low' : 'OK'}
+              </Text>
+            </View>
+          </View>
         </View>
+
+        {/* Actions */}
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.editBtn} onPress={() => navigation.navigate('AddItem', { product: item })}>
+          <TouchableOpacity
+            style={styles.editBtn}
+            onPress={() => {
+              if (switchTab) {
+                // Navigate to AddProduct tab in WebLayout
+                switchTab('AddProduct');
+              } else {
+                navigation.navigate('AddItem', { product: item });
+              }
+            }}
+          >
             <Text style={styles.editIcon}>✏️</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.delBtn} onPress={() => handleDelete(item)}>
@@ -82,21 +186,44 @@ export default function AdminScreen({ navigation }) {
     <View style={styles.root}>
       {/* Header */}
       <View style={[styles.header, isWeb && styles.headerWeb]}>
-        <TouchableOpacity style={[styles.backBtn, isWeb && styles.backBtnWeb]} onPress={() => navigation.goBack()}>
-          <Text style={[styles.backText, isWeb && styles.backTextWeb]}>‹ Back</Text>
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, isWeb && styles.headerTitleWeb]}>Admin Panel</Text>
-        <TouchableOpacity style={styles.addBtnHeader} onPress={() => navigation.navigate('AddItem', { product: null })}>
+        {!switchTab && (
+          <TouchableOpacity style={[styles.backBtn, isWeb && styles.backBtnWeb]} onPress={() => navigation.goBack()}>
+            <Text style={[styles.backText, isWeb && styles.backTextWeb]}>‹ Back</Text>
+          </TouchableOpacity>
+        )}
+        <Text style={[styles.headerTitle, isWeb && styles.headerTitleWeb]}>📦 Inventory</Text>
+        <TouchableOpacity
+          style={styles.addBtnHeader}
+          onPress={() => switchTab ? switchTab('AddProduct') : navigation.navigate('AddItem', { product: null })}
+        >
           <Text style={styles.addBtnHeaderText}>+ Add Product</Text>
         </TouchableOpacity>
       </View>
 
       {IS_DEMO && (
         <View style={styles.demoBanner}>
-          <Text style={styles.demoText}>Demo Mode — changes save nahi honge</Text>
+          <Text style={styles.demoText}>🧪 Demo Mode — stock changes save locally</Text>
         </View>
       )}
 
+      {/* Search bar */}
+      <View style={styles.searchBar}>
+        <Text style={styles.searchIcon}>🔍</Text>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search products or category..."
+          value={search}
+          onChangeText={setSearch}
+          placeholderTextColor="#94a3b8"
+        />
+        {search.length > 0 && (
+          <TouchableOpacity onPress={() => setSearch('')} style={{ padding: 6 }}>
+            <Text style={{ color: '#94a3b8', fontWeight: '800' }}>✕</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Stats */}
       {!loading && (
         <View style={[styles.statsRow, isWeb && styles.statsRowWeb]}>
           {stats.map((st) => (
@@ -109,27 +236,36 @@ export default function AdminScreen({ navigation }) {
         </View>
       )}
 
-      <View style={{ flex: 1, overflow: 'hidden' }}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={[styles.list, isWeb && styles.listWeb]}
+        showsVerticalScrollIndicator
+      >
         {loading ? (
           <View style={styles.center}><ActivityIndicator size="large" color={C.primary} /></View>
+        ) : products.length === 0 ? (
+          <View style={styles.center}>
+            <Text style={{ fontSize: 56 }}>📦</Text>
+            <Text style={styles.emptyTitle}>No products yet</Text>
+            <Text style={styles.emptyText}>+ Add Product se shuru karein</Text>
+          </View>
+        ) : filtered.length === 0 ? (
+          <View style={styles.center}>
+            <Text style={{ fontSize: 40 }}>🔍</Text>
+            <Text style={styles.emptyTitle}>No results found</Text>
+            <Text style={styles.emptyText}>Try a different search term</Text>
+          </View>
         ) : (
-          <FlatList data={products} keyExtractor={(i) => i.id} renderItem={renderItem}
-            style={{ flex: 1 }}
-            contentContainerStyle={[styles.list, isWeb && styles.listWeb]}
-            showsVerticalScrollIndicator
-            ListEmptyComponent={
-              <View style={styles.center}>
-                <Text style={{ fontSize: 56 }}>📦</Text>
-                <Text style={styles.emptyTitle}>No products yet</Text>
-                <Text style={styles.emptyText}>+ Add Product se shuru karein</Text>
-              </View>
-            }
-          />
+          filtered.map((item) => renderCard(item))
         )}
-      </View>
+      </ScrollView>
 
       {!isWeb && (
-        <TouchableOpacity style={styles.fab} onPress={() => navigation.navigate('AddItem', { product: null })} activeOpacity={0.88}>
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => navigation.navigate('AddItem', { product: null })}
+          activeOpacity={0.88}
+        >
           <Text style={styles.fabText}>+ Add Product</Text>
         </TouchableOpacity>
       )}
@@ -152,34 +288,52 @@ const styles = StyleSheet.create({
   addBtnHeaderText:{ color: '#fff', fontSize: 13, fontWeight: '700' },
 
   demoBanner: { backgroundColor: '#fffbeb', borderBottomWidth: 1, borderColor: '#fde68a', paddingVertical: 8, paddingHorizontal: 16 },
-  demoText:   { color: '#92400e', fontSize: 12, textAlign: 'center' },
+  demoText:   { color: '#92400e', fontSize: 12, textAlign: 'center', fontWeight: '600' },
 
-  statsRow:    { flexDirection: 'row', padding: 16, gap: 12 },
-  statsRowWeb: { paddingHorizontal: 24 },
-  statCard:    { flex: 1, borderRadius: 12, padding: 14, alignItems: 'center', marginHorizontal: 2 },
-  statIcon:    { fontSize: 22, marginBottom: 6 },
-  statValue:   { fontSize: 18, fontWeight: '800', marginBottom: 2 },
-  statLabel:   { fontSize: 10, fontWeight: '600', textAlign: 'center', opacity: 0.8 },
+  searchBar:   { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8fafc', borderBottomWidth: 1, borderBottomColor: '#e2e8f0', paddingHorizontal: 16, paddingVertical: 8 },
+  searchIcon:  { fontSize: 14, marginRight: 8 },
+  searchInput: { flex: 1, fontSize: 14, color: '#0f172a', paddingVertical: 6 },
+
+  statsRow:    { flexDirection: 'row', padding: 12, gap: 8 },
+  statsRowWeb: { paddingHorizontal: 20 },
+  statCard:    { flex: 1, borderRadius: 10, padding: 10, alignItems: 'center' },
+  statIcon:    { fontSize: 18, marginBottom: 4 },
+  statValue:   { fontSize: 15, fontWeight: '800', marginBottom: 1 },
+  statLabel:   { fontSize: 8, fontWeight: '600', textAlign: 'center', opacity: 0.8 },
 
   center:    { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 40 },
   emptyTitle:{ fontSize: 17, fontWeight: '700', color: C.text, marginTop: 12 },
   emptyText: { fontSize: 13, color: C.textLight, marginTop: 6 },
 
-  list:    { padding: 14, paddingBottom: 100 },
-  listWeb: { paddingHorizontal: 24, paddingTop: 8 },
+  list:    { padding: 12, paddingBottom: 100 },
+  listWeb: { paddingHorizontal: 20, paddingTop: 8 },
 
-  card:    { backgroundColor: C.surface, borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', marginBottom: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
-  cardImg: { width: 66, height: 66, borderRadius: 10, resizeMode: 'cover' },
-  cardBody:{ flex: 1, marginLeft: 14 },
-  cardName:{ fontSize: 14, fontWeight: '600', color: C.text, lineHeight: 19 },
-  catPill: { alignSelf: 'flex-start', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, marginTop: 5 },
-  catPillText: { fontSize: 10, fontWeight: '700' },
-  cardPrice:{ fontSize: 16, fontWeight: '800', color: C.primary, marginTop: 6 },
-  actions: { flexDirection: 'column', gap: 8, marginLeft: 6 },
-  editBtn: { width: 36, height: 36, borderRadius: 8, backgroundColor: C.primaryLight, justifyContent: 'center', alignItems: 'center', marginBottom: 6 },
-  editIcon:{ fontSize: 15 },
-  delBtn:  { width: 36, height: 36, borderRadius: 8, backgroundColor: C.dangerBg, justifyContent: 'center', alignItems: 'center' },
-  delIcon: { fontSize: 15 },
+  card: {
+    backgroundColor: C.surface, borderRadius: 12, padding: 12, flexDirection: 'row',
+    alignItems: 'flex-start', marginBottom: 10,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
+  },
+  cardImg:   { width: 64, height: 64, borderRadius: 10, resizeMode: 'cover' },
+  cardBody:  { flex: 1, marginLeft: 12 },
+  cardName:  { fontSize: 13, fontWeight: '600', color: C.text, lineHeight: 18 },
+  catPill:   { alignSelf: 'flex-start', borderRadius: 5, paddingHorizontal: 7, paddingVertical: 2, marginTop: 4 },
+  catPillText: { fontSize: 9, fontWeight: '700' },
+  cardUnit:  { fontSize: 10, color: C.textLight, marginTop: 2 },
+  cardPrice: { fontSize: 14, fontWeight: '800', color: C.primary, marginTop: 3 },
+
+  /* Stock control */
+  stockRow:   { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 5 },
+  stockBtn:   { width: 28, height: 28, borderRadius: 7, backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe', justifyContent: 'center', alignItems: 'center' },
+  stockBtnTxt:{ fontSize: 16, fontWeight: '800', color: C.primary },
+  stockInput: { width: 46, height: 28, borderWidth: 1.5, borderColor: '#e2e8f0', borderRadius: 7, textAlign: 'center', fontSize: 12, fontWeight: '700', color: C.text, backgroundColor: '#f8fafc', paddingVertical: 0 },
+  stockTag:   { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
+  stockTagTxt:{ fontSize: 9, fontWeight: '800' },
+
+  actions: { flexDirection: 'column', gap: 8, marginLeft: 4 },
+  editBtn: { width: 34, height: 34, borderRadius: 8, backgroundColor: C.primaryLight, justifyContent: 'center', alignItems: 'center' },
+  editIcon:{ fontSize: 14 },
+  delBtn:  { width: 34, height: 34, borderRadius: 8, backgroundColor: C.dangerBg, justifyContent: 'center', alignItems: 'center' },
+  delIcon: { fontSize: 14 },
 
   fab:     { position: 'absolute', bottom: 24, left: 20, right: 20, backgroundColor: C.primary, borderRadius: 14, paddingVertical: 17, alignItems: 'center', shadowColor: C.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 14, elevation: 8 },
   fabText: { color: '#fff', fontSize: 16, fontWeight: '800' },

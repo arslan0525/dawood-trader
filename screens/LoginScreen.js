@@ -21,15 +21,21 @@ const FEATURES = [
 
 const BrandPanel = () => (
   <View style={s.brandPanel}>
+    {/* Decorative circles */}
+    <View style={s.dec1} />
+    <View style={s.dec2} />
+    <View style={s.dec3} />
     <View style={s.brandContent}>
       <View style={s.brandLogoRow}>
-        <Text style={s.brandEmoji}>🛒</Text>
+        <View style={s.brandIconWrap}>
+          <Text style={s.brandEmoji}>🛒</Text>
+        </View>
         <View>
           <Text style={s.brandName}>Dawood Trader</Text>
-          <Text style={s.brandSub}>Wholesale Store</Text>
+          <Text style={s.brandSub}>Pakistan Wholesale Store</Text>
         </View>
       </View>
-      <Text style={s.brandHeadline}>Pakistan ka trusted wholesale platform</Text>
+      <Text style={s.brandHeadline}>Pakistan's most trusted wholesale platform</Text>
       <View style={{ gap: 14 }}>
         {FEATURES.map((f) => (
           <View key={f.text} style={s.featureRow}>
@@ -188,16 +194,20 @@ export default function LoginScreen({ navigation }) {
 const s = StyleSheet.create({
   splitRoot:    { flex: 1, flexDirection: 'row' },
 
-  brandPanel:   { width: '45%', backgroundColor: C.primary, justifyContent: 'center', overflow: 'hidden' },
+  brandPanel:   { width: '45%', backgroundColor: C.primaryDark, justifyContent: 'center', overflow: 'hidden', position: 'relative' },
+  dec1: { position: 'absolute', width: 320, height: 320, borderRadius: 160, backgroundColor: 'rgba(255,255,255,0.05)', top: -80, right: -100 },
+  dec2: { position: 'absolute', width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(255,255,255,0.04)', bottom: 60, left: -80 },
+  dec3: { position: 'absolute', width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,255,255,0.06)', top: '40%', right: -40 },
   brandContent: { padding: 48 },
   brandLogoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 36 },
-  brandEmoji:   { fontSize: 42, marginRight: 14 },
+  brandIconWrap:{ width: 58, height: 58, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.18)', justifyContent: 'center', alignItems: 'center', marginRight: 16, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.25)' },
+  brandEmoji:   { fontSize: 28 },
   brandName:    { color: '#fff', fontSize: 22, fontWeight: '800' },
-  brandSub:     { color: 'rgba(255,255,255,0.55)', fontSize: 12, marginTop: 2 },
-  brandHeadline:{ color: '#fff', fontSize: 26, fontWeight: '700', lineHeight: 36, marginBottom: 32 },
+  brandSub:     { color: 'rgba(255,255,255,0.55)', fontSize: 12, marginTop: 3 },
+  brandHeadline:{ color: 'rgba(255,255,255,0.9)', fontSize: 24, fontWeight: '700', lineHeight: 34, marginBottom: 32 },
   featureRow:   { flexDirection: 'row', alignItems: 'center' },
-  featureIcon:  { width: 40, height: 40, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', marginRight: 14 },
-  featureText:  { color: 'rgba(255,255,255,0.85)', fontSize: 15, fontWeight: '500' },
+  featureIcon:  { width: 40, height: 40, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.12)', justifyContent: 'center', alignItems: 'center', marginRight: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
+  featureText:  { color: 'rgba(255,255,255,0.82)', fontSize: 14, fontWeight: '500' },
 
   formPanel:    { flex: 1, backgroundColor: C.bg },
   formScroll:   { flexGrow: 1, justifyContent: 'center' },

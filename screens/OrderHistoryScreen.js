@@ -1,0 +1,476 @@
+import React, { useState, useMemo } from 'react';
+import {
+  View, Text, ScrollView, TouchableOpacity, StyleSheet,
+  TextInput, Modal, Platform, Alert, Linking, useWindowDimensions,
+} from 'react-native';
+import { useAppData } from '../context/AppDataContext';
+import { useLang } from '../context/LanguageContext';
+import { useToast } from '../context/ToastContext';
+import { C } from '../constants/theme';
+
+function fmtDate(ts) {
+  if (!ts) return '—';
+  return new Date(ts).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+function fmtCurrency(n) { return 'Rs.' + (n || 0).toLocaleString(); }
+
+function StatusBadge({ status }) {
+  const map = {
+    paid:    { bg: '#dcfce7', color: '#15803d', label: 'Paid' },
+    partial: { bg: '#fef9c3', color: '#a16207', label: 'Partial' },
+    unpaid:  { bg: '#fee2e2', color: '#b91c1c', label: 'Unpaid' },
+  };
+  const s = map[status] || map.unpaid;
+  return (
+    <View style={[oh.badge, { backgroundColor: s.bg }]}>
+      <Text style={[oh.badgeTxt, { color: s.color }]}>{s.label}</Text>
+    </View>
+  );
+}
+
+function BillDetailModal({ visible, order, routes, onClose, onAddPayment }) {
+  const { t } = useLang();
+  const [payAmt, setPayAmt] = useState('');
+  const [payNote, setPayNote] = useState('');
+  const [paying, setPaying] = useState(false);
+  const [showPayForm, setShowPayForm] = useState(false);
+  const { addPayment } = useAppData();
+  const { showToast } = useToast();
+
+  if (!order) return null;
+  const route = routes.find(r => r.id === order.routeId);
+
+  const handlePay = async () => {
+    const amt = Number(payAmt);
+    if (!amt || amt <= 0) { showToast('Enter valid amount', 'error'); return; }
+    if (amt > order.remaining) { showToast(`Amount cannot exceed remaining ${fmtCurrency(order.remaining)}`, 'error'); return; }
+    setPaying(true);
+    try {
+      await addPayment(order.id, amt, payNote);
+      showToast(t('paymentAdded'), 'success');
+      setPayAmt(''); setPayNote(''); setShowPayForm(false);
+      onAddPayment?.();
+    } catch { showToast('Could not record payment', 'error'); }
+    finally { setPaying(false); }
+  };
+
+  const shareWhatsApp = () => {
+    let msg = `*DAWOOD TRADER*\n${t('billNo')} ${order.id}\n\n`;
+    msg += `*Customer:* ${order.customerName}\n`;
+    msg += `📞 ${order.customerPhone}\n📍 ${order.customerAddress}\n\n`;
+    msg += `*Products:*\n`;
+    order.items?.forEach(item => {
+      msg += `• ${item.productName}\n  ${item.quantity} × ${fmtCurrency(item.rate)} = *${fmtCurrency(item.lineTotal)}*\n`;
+    });
+    msg += `\n*Grand Total: ${fmtCurrency(order.grandTotal)}*`;
+    if (order.remaining > 0) msg += `\nRemaining: ${fmtCurrency(order.remaining)}`;
+    msg += `\n\nThank You! 🙏`;
+    const url = Platform.OS === 'web'
+      ? `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`
+      : `whatsapp://send?text=${encodeURIComponent(msg)}`;
+    Linking.openURL(url).catch(() => {});
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={oh.billOverlay}>
+        <View style={oh.billCard}>
+          {/* Header */}
+          <View style={oh.billTop}>
+            <View style={{ flex: 1 }}>
+              <Text style={oh.billId}>{t('billNo')} {order.id}</Text>
+              <Text style={oh.billDate}>{fmtDate(order.createdAt)}</Text>
+            </View>
+            <StatusBadge status={order.status} />
+            <TouchableOpacity style={oh.closeBtn} onPress={onClose}>
+              <Text style={{ fontSize: 18, color: C.textLight }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {/* Customer */}
+            <View style={oh.section}>
+              <Text style={oh.secTitle}>Customer</Text>
+              <Text style={oh.custName}>{order.customerName}</Text>
+              <Text style={oh.custSub}>📞 {order.customerPhone}</Text>
+              <Text style={oh.custSub}>📍 {order.customerAddress}</Text>
+              {route && (
+                <View style={[oh.routePill, { backgroundColor: route.color }]}>
+                  <Text style={[oh.routePillTxt, { color: route.textColor }]}>{route.name}</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Items */}
+            <View style={oh.section}>
+              <Text style={oh.secTitle}>Items ({order.items?.length || 0})</Text>
+              {order.items?.map((item, i) => (
+                <View key={i} style={oh.itemRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={oh.itemName}>{item.productName}</Text>
+                    <Text style={oh.itemCalc}>{item.quantity} × {fmtCurrency(item.rate)}</Text>
+                  </View>
+                  <Text style={oh.itemTotal}>{fmtCurrency(item.lineTotal)}</Text>
+                </View>
+              ))}
+              <View style={oh.divider} />
+              <View style={oh.sumRow}>
+                <Text style={oh.sumLabel}>{t('grandTotal')}</Text>
+                <Text style={oh.sumValue}>{fmtCurrency(order.grandTotal)}</Text>
+              </View>
+              <View style={oh.sumRow}>
+                <Text style={[oh.sumLabel, { color: '#15803d' }]}>{t('paidAmount')}</Text>
+                <Text style={[oh.sumValue, { color: '#15803d' }]}>{fmtCurrency(order.paidAmount)}</Text>
+              </View>
+              <View style={oh.sumRow}>
+                <Text style={[oh.sumLabel, { color: order.remaining > 0 ? '#b91c1c' : '#15803d' }]}>{t('remaining')}</Text>
+                <Text style={[oh.sumValue, { color: order.remaining > 0 ? '#b91c1c' : '#15803d' }]}>
+                  {fmtCurrency(order.remaining)}
+                </Text>
+              </View>
+            </View>
+
+            {/* Add Payment form */}
+            {order.remaining > 0 && (
+              <View style={oh.section}>
+                <Text style={oh.secTitle}>{t('addPayment')}</Text>
+                {showPayForm ? (
+                  <View>
+                    <View style={oh.payRow}>
+                      <Text style={oh.payLabel}>Amount (max {fmtCurrency(order.remaining)})</Text>
+                      <View style={oh.payInputBox}>
+                        <Text style={oh.payRs}>Rs.</Text>
+                        <TextInput
+                          style={oh.payInput}
+                          value={payAmt}
+                          onChangeText={setPayAmt}
+                          keyboardType="numeric"
+                          placeholder="0"
+                          placeholderTextColor="#94a3b8"
+                          autoFocus
+                        />
+                      </View>
+                    </View>
+                    <TextInput
+                      style={oh.noteInput}
+                      value={payNote}
+                      onChangeText={setPayNote}
+                      placeholder="Payment note (optional)"
+                      placeholderTextColor="#94a3b8"
+                    />
+                    <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+                      <TouchableOpacity style={oh.cancelPayBtn} onPress={() => { setShowPayForm(false); setPayAmt(''); }}>
+                        <Text style={{ color: C.textMid, fontWeight: '700' }}>{t('cancel')}</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[oh.confirmPayBtn, paying && { opacity: 0.6 }]}
+                        onPress={handlePay} disabled={paying}
+                      >
+                        <Text style={{ color: '#fff', fontWeight: '800' }}>
+                          {paying ? 'Saving...' : 'Record Payment'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : (
+                  <TouchableOpacity style={oh.addPayBtn} onPress={() => setShowPayForm(true)}>
+                    <Text style={oh.addPayBtnTxt}>+ {t('addPayment')}</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </ScrollView>
+
+          {/* Actions */}
+          <View style={oh.billBtns}>
+            <TouchableOpacity style={oh.waBtn} onPress={shareWhatsApp}>
+              <Text>💬</Text>
+              <Text style={oh.waBtnTxt}>WhatsApp</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={oh.closeMainBtn} onPress={onClose}>
+              <Text style={oh.closeMainBtnTxt}>{t('close')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+export default function OrderHistoryScreen({ switchTab }) {
+  const { orders, customers, ROUTES, deleteOrder } = useAppData();
+  const { t } = useLang();
+  const { showToast } = useToast();
+  const { width } = useWindowDimensions();
+
+  const [search, setSearch]               = useState('');
+  const [routeFilter, setRouteFilter]     = useState(0);
+  const [statusFilter, setStatusFilter]   = useState('all');
+  const [customerFilter, setCustomerFilter] = useState('');
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [showDetail, setShowDetail]       = useState(false);
+
+  const filtered = useMemo(() => {
+    let list = [...orders];
+    if (routeFilter) list = list.filter(o => o.routeId === routeFilter);
+    if (statusFilter !== 'all') list = list.filter(o => o.status === statusFilter);
+    if (customerFilter) list = list.filter(o => o.customerId === customerFilter);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(o =>
+        o.customerName?.toLowerCase().includes(q) ||
+        o.id?.toLowerCase().includes(q) ||
+        o.items?.some(i => i.productName?.toLowerCase().includes(q))
+      );
+    }
+    return list.sort((a, b) => b.createdAt - a.createdAt);
+  }, [orders, search, routeFilter, statusFilter, customerFilter]);
+
+  const totalSales = useMemo(() => filtered.reduce((s, o) => s + o.grandTotal, 0), [filtered]);
+  const totalOutstanding = useMemo(() => filtered.reduce((s, o) => s + (o.remaining || 0), 0), [filtered]);
+
+  const openDetail = (order) => { setSelectedOrder(order); setShowDetail(true); };
+
+  const handleDelete = (order) => {
+    const doDelete = async () => {
+      try {
+        await deleteOrder(order.id);
+        showToast('Order deleted', 'success');
+        setShowDetail(false);
+      } catch { showToast('Could not delete', 'error'); }
+    };
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Delete order ${order.id}?`)) doDelete();
+    } else {
+      Alert.alert('Delete Order?', `Delete bill for ${order.customerName}?`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: doDelete },
+      ]);
+    }
+  };
+
+  return (
+    <View style={oh.root}>
+      {/* Header */}
+      <View style={oh.header}>
+        <View style={{ flex: 1 }}>
+          <Text style={oh.headerTitle}>📋 {t('orderHistory')}</Text>
+          <Text style={oh.headerSub}>{filtered.length} orders</Text>
+        </View>
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 10 }}>Total Sales</Text>
+          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '800' }}>{fmtCurrency(totalSales)}</Text>
+        </View>
+      </View>
+
+      {/* Search */}
+      <View style={oh.searchRow}>
+        <View style={oh.searchBox}>
+          <Text>🔍</Text>
+          <TextInput
+            style={oh.searchInput}
+            placeholder="Search by customer, bill no, product..."
+            value={search}
+            onChangeText={setSearch}
+            placeholderTextColor="#94a3b8"
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')}>
+              <Text style={{ color: '#94a3b8', fontWeight: '800' }}>✕</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {/* Filters */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={oh.filterBar} contentContainerStyle={oh.filterRow}>
+        {/* Status filter */}
+        {['all', 'unpaid', 'partial', 'paid'].map(s => (
+          <TouchableOpacity
+            key={s}
+            style={[oh.filterChip, statusFilter === s && oh.filterChipActive]}
+            onPress={() => setStatusFilter(s)}
+          >
+            <Text style={[oh.filterChipTxt, statusFilter === s && oh.filterChipTxtActive]}>
+              {s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        ))}
+        <View style={oh.filterDivider} />
+        {/* Route filter */}
+        <TouchableOpacity
+          style={[oh.filterChip, routeFilter === 0 && oh.filterChipActive]}
+          onPress={() => setRouteFilter(0)}
+        >
+          <Text style={[oh.filterChipTxt, routeFilter === 0 && oh.filterChipTxtActive]}>All Routes</Text>
+        </TouchableOpacity>
+        {ROUTES.map(r => (
+          <TouchableOpacity
+            key={r.id}
+            style={[oh.filterChip, routeFilter === r.id && { backgroundColor: r.color, borderColor: r.textColor + '44' }]}
+            onPress={() => setRouteFilter(r.id)}
+          >
+            <Text style={[oh.filterChipTxt, routeFilter === r.id && { color: r.textColor, fontWeight: '700' }]}>{r.name}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      {/* Summary row */}
+      {filtered.length > 0 && (
+        <View style={oh.summaryBar}>
+          <Text style={oh.summaryTxt}>{filtered.length} orders · Sales: {fmtCurrency(totalSales)}</Text>
+          {totalOutstanding > 0 && (
+            <Text style={oh.summaryDebt}>Outstanding: {fmtCurrency(totalOutstanding)}</Text>
+          )}
+        </View>
+      )}
+
+      {/* List */}
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={oh.list} showsVerticalScrollIndicator>
+        {filtered.length === 0 ? (
+          <View style={oh.empty}>
+            <Text style={{ fontSize: 52 }}>📋</Text>
+            <Text style={oh.emptyTitle}>{search ? t('noData') : t('noOrders')}</Text>
+            <TouchableOpacity style={oh.emptyBtn} onPress={() => switchTab?.('NewOrder')}>
+              <Text style={oh.emptyBtnTxt}>+ {t('newOrder')}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : filtered.map(order => (
+          <TouchableOpacity key={order.id} style={oh.card} onPress={() => openDetail(order)} activeOpacity={0.85}>
+            <View style={oh.cardTop}>
+              <View style={{ flex: 1 }}>
+                <Text style={oh.cardCustomer} numberOfLines={1}>{order.customerName}</Text>
+                <Text style={oh.cardId}>{order.id} · {fmtDate(order.createdAt)}</Text>
+                <Text style={oh.cardRoute}>{ROUTES.find(r => r.id === order.routeId)?.name || '—'}</Text>
+              </View>
+              <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                <Text style={oh.cardTotal}>{fmtCurrency(order.grandTotal)}</Text>
+                <StatusBadge status={order.status} />
+              </View>
+            </View>
+            {order.remaining > 0 && (
+              <View style={oh.cardDebtRow}>
+                <Text style={oh.cardDebt}>Due: {fmtCurrency(order.remaining)}</Text>
+                <Text style={oh.cardPaid}>Paid: {fmtCurrency(order.paidAmount)}</Text>
+              </View>
+            )}
+            <Text style={oh.cardItems} numberOfLines={1}>
+              {order.items?.map(i => i.productName).join(', ')}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      {/* Detail Modal */}
+      <BillDetailModal
+        visible={showDetail}
+        order={selectedOrder}
+        routes={ROUTES}
+        onClose={() => setShowDetail(false)}
+        onAddPayment={() => {
+          const updated = orders.find(o => o.id === selectedOrder?.id);
+          if (updated) setSelectedOrder(updated);
+        }}
+      />
+    </View>
+  );
+}
+
+const oh = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#eef2f9' },
+
+  header: {
+    backgroundColor: C.primary,
+    paddingTop: Platform.OS === 'web' ? 20 : 54,
+    paddingBottom: 16, paddingHorizontal: 16,
+    flexDirection: 'row', alignItems: 'center',
+  },
+  headerTitle: { color: '#fff', fontSize: 20, fontWeight: '800' },
+  headerSub:   { color: 'rgba(255,255,255,0.6)', fontSize: 11, marginTop: 2 },
+
+  searchRow:   { backgroundColor: '#fff', paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
+  searchBox:   { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f4f7fc', borderRadius: 12, borderWidth: 1.5, borderColor: '#e2e8f0', paddingHorizontal: 12, gap: 8 },
+  searchInput: { flex: 1, paddingVertical: 9, fontSize: 14, color: C.text },
+
+  filterBar: { backgroundColor: '#fff', maxHeight: 50, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
+  filterRow: { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 7, gap: 6, alignItems: 'center' },
+  filterChip:      { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 14, borderWidth: 1.5, borderColor: '#e2e8f0', backgroundColor: '#fff' },
+  filterChipActive:{ backgroundColor: '#eff6ff', borderColor: C.primary },
+  filterChipTxt:   { fontSize: 11, fontWeight: '500', color: '#64748b' },
+  filterChipTxtActive: { color: C.primary, fontWeight: '700' },
+  filterDivider:   { width: 1, height: 20, backgroundColor: '#e2e8f0', marginHorizontal: 4 },
+
+  summaryBar: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 8, backgroundColor: '#f8fafc', borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
+  summaryTxt:  { fontSize: 11, color: C.textLight, fontWeight: '600' },
+  summaryDebt: { fontSize: 11, color: '#b91c1c', fontWeight: '700' },
+
+  list: { padding: 14, paddingBottom: 80 },
+
+  card: {
+    backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 10,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 3,
+  },
+  cardTop:      { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 6 },
+  cardCustomer: { fontSize: 15, fontWeight: '700', color: C.text },
+  cardId:       { fontSize: 11, color: C.textLight, marginTop: 2 },
+  cardRoute:    { fontSize: 11, color: C.textMid, marginTop: 2 },
+  cardTotal:    { fontSize: 16, fontWeight: '800', color: C.primary },
+  cardDebtRow:  { flexDirection: 'row', gap: 12, marginBottom: 4 },
+  cardDebt:     { fontSize: 11, fontWeight: '700', color: '#b91c1c' },
+  cardPaid:     { fontSize: 11, fontWeight: '600', color: '#15803d' },
+  cardItems:    { fontSize: 11, color: C.textLight },
+
+  badge:    { borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
+  badgeTxt: { fontSize: 10, fontWeight: '700' },
+
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60, gap: 10 },
+  emptyTitle:  { fontSize: 16, fontWeight: '700', color: C.textMid },
+  emptyBtn:    { backgroundColor: C.primary, borderRadius: 10, paddingHorizontal: 24, paddingVertical: 12, marginTop: 4 },
+  emptyBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 14 },
+
+  /* Bill Detail Modal */
+  billOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
+  billCard: {
+    backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    maxHeight: '90%', overflow: 'hidden',
+  },
+  billTop: {
+    flexDirection: 'row', alignItems: 'center', padding: 16,
+    borderBottomWidth: 1, borderBottomColor: '#f1f5f9', gap: 8,
+  },
+  billId:   { fontSize: 14, fontWeight: '700', color: C.text },
+  billDate: { fontSize: 11, color: C.textLight, marginTop: 2 },
+  closeBtn: { padding: 4, marginLeft: 4 },
+
+  section:  { padding: 16, borderBottomWidth: 1, borderBottomColor: '#f8fafc' },
+  secTitle: { fontSize: 10, fontWeight: '700', color: '#94a3b8', letterSpacing: 1, marginBottom: 8 },
+  custName: { fontSize: 16, fontWeight: '800', color: C.text, marginBottom: 4 },
+  custSub:  { fontSize: 13, color: C.textMid, marginBottom: 2 },
+  routePill: { alignSelf: 'flex-start', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 4, marginTop: 6 },
+  routePillTxt: { fontSize: 11, fontWeight: '700' },
+  itemRow:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#f8fafc' },
+  itemName: { fontSize: 13, fontWeight: '600', color: C.text },
+  itemCalc: { fontSize: 11, color: C.textLight, marginTop: 2 },
+  itemTotal:{ fontSize: 14, fontWeight: '700', color: C.primary },
+  divider:  { height: 1, backgroundColor: '#e2e8f0', marginVertical: 8 },
+  sumRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  sumLabel: { fontSize: 13, fontWeight: '700', color: C.text },
+  sumValue: { fontSize: 16, fontWeight: '800', color: C.primary },
+
+  payRow:     { marginBottom: 10 },
+  payLabel:   { fontSize: 12, fontWeight: '600', color: C.textMid, marginBottom: 6 },
+  payInputBox:{ flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: C.primary, borderRadius: 10, paddingHorizontal: 12, backgroundColor: '#eff6ff' },
+  payRs:      { fontSize: 13, fontWeight: '700', color: C.primary, marginRight: 4 },
+  payInput:   { flex: 1, fontSize: 16, fontWeight: '700', color: C.primary, paddingVertical: 10 },
+  noteInput:  { borderWidth: 1.5, borderColor: '#e2e8f0', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, fontSize: 13, color: C.text },
+  cancelPayBtn:  { flex: 1, backgroundColor: '#f1f5f9', borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
+  confirmPayBtn: { flex: 2, backgroundColor: '#15803d', borderRadius: 10, paddingVertical: 12, alignItems: 'center' },
+  addPayBtn:     { backgroundColor: '#eff6ff', borderRadius: 10, paddingVertical: 12, alignItems: 'center', borderWidth: 1.5, borderColor: C.primary },
+  addPayBtnTxt:  { color: C.primary, fontWeight: '700', fontSize: 14 },
+
+  billBtns:    { flexDirection: 'row', gap: 10, padding: 16, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
+  waBtn:       { flex: 1, backgroundColor: '#25D366', borderRadius: 12, paddingVertical: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  waBtnTxt:    { color: '#fff', fontWeight: '700', fontSize: 14 },
+  closeMainBtn:    { flex: 1, backgroundColor: '#f1f5f9', borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
+  closeMainBtnTxt: { color: C.textMid, fontWeight: '700', fontSize: 14 },
+});

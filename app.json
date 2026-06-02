@@ -27,7 +27,16 @@
       ]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "name": "Dawood Trader",
+      "shortName": "DT",
+      "lang": "en",
+      "description": "Pakistan's Premier Distribution, Inventory & Billing Management System",
+      "themeColor": "#2563eb",
+      "backgroundColor": "#f1f5f9",
+      "display": "standalone",
+      "startUrl": "/",
+      "scope": "/"
     },
     "plugins": [
       [

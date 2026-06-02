@@ -1,0 +1,39 @@
+{
+  "name": "Dawood Trader",
+  "short_name": "DT",
+  "description": "Distribution, Inventory & Billing Management System",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f1f5f9",
+  "theme_color": "#2563eb",
+  "lang": "en",
+  "categories": ["business", "finance", "productivity"],
+  "icons": [
+    {
+      "src": "/assets/icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New Order",
+      "url": "/",
+      "description": "Create a new customer bill"
+    },
+    {
+      "name": "Customers",
+      "url": "/",
+      "description": "Manage customers"
+    }
+  ]
+}
