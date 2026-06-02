@@ -172,13 +172,13 @@ export default function WebLayout({ navigation }) {
       : (user?.email?.[0] || '?').toUpperCase(),
     [user]);
 
-  // ── Android/Browser back button handler ───────────────────
+  // Sub-screens jab open hon tab hi back button dikhe
+  const DETAIL_SCREENS = new Set(['CustomerProfile', 'AddProduct']);
+
+  // Android/Browser hardware back button
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
-
-    // Set initial history state
     window.history.replaceState({ tab: 'Dashboard', idx: 0 }, '', '/');
-
     const onPopState = () => {
       const hist = historyRef.current;
       if (hist.length > 1) {
@@ -187,40 +187,42 @@ export default function WebLayout({ navigation }) {
         historyRef.current = newHistory;
         setNavHistory(newHistory);
         setActiveTab(prevTab);
-        // Re-push so we don't fall off the end
         window.history.pushState({ tab: prevTab, idx: newHistory.length }, '', '/');
       }
-      // If only 1 item left — let the browser handle (exit PWA / go to prev page)
     };
-
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
   const handleLogout = useCallback(() => {
+    const doLogout = () => IS_DEMO ? demoLogout() : signOut(auth);
     if (Platform.OS === 'web') {
-      if (!window.confirm('Logout karna chahte hain?')) return;
-      IS_DEMO ? demoLogout() : signOut(auth);
+      if (window.confirm('Logout karna chahte hain?')) doLogout();
       return;
     }
     Alert.alert('Logout', 'Kya aap logout karna chahte hain?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', style: 'destructive', onPress: () => IS_DEMO ? demoLogout() : signOut(auth) },
+      { text: 'Logout', style: 'destructive', onPress: doLogout },
     ]);
   }, [demoLogout]);
 
-  // ── switchTab: pushes to history stack ────────────────────
+  // Main nav tab press — resets history (no back button for main tabs)
+  const goToTab = useCallback((key) => {
+    setActiveTab(key);
+    const fresh = [key];
+    historyRef.current = fresh;
+    setNavHistory(fresh);
+  }, []);
+
+  // Sub-screen navigation — pushes to history (shows back button)
   const switchTab = useCallback((key, data = null) => {
     setActiveTab(key);
     if (key === 'AddProduct')      setTabProduct(data);
     if (key === 'CustomerProfile') setViewCustomerId(data);
-
     setNavHistory(prev => {
-      // Don't stack duplicates
       if (prev[prev.length - 1] === key) return prev;
       const next = [...prev, key];
       historyRef.current = next;
-      // Push browser state for hardware back button
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
         window.history.pushState({ tab: key, idx: next.length }, '', '/');
       }
@@ -228,7 +230,6 @@ export default function WebLayout({ navigation }) {
     });
   }, []);
 
-  // ── goBack: pops history stack ─────────────────────────────
   const goBack = useCallback(() => {
     const hist = historyRef.current;
     if (hist.length <= 1) return;
@@ -242,7 +243,8 @@ export default function WebLayout({ navigation }) {
     }
   }, []);
 
-  const canGoBack = navHistory.length > 1;
+  // Back button sirf sub-screens ke liye (CustomerProfile, AddProduct-edit)
+  const canGoBack = navHistory.length > 1 && DETAIL_SCREENS.has(activeTab);
 
   const viewCustomer = useCallback((id) => {
     setViewCustomerId(id);
@@ -295,7 +297,7 @@ export default function WebLayout({ navigation }) {
     const mobileTabs = [
       { key: 'Dashboard',    icon: '📊', label: 'Dashboard' },
       { key: 'Home',         icon: '🛍️', label: 'Products'  },
-      { key: 'NewOrder',     icon: '📝', label: 'New Order' },
+      { key: 'NewOrder',     icon: '📝', label: 'Order'     },
       { key: 'Customers',    icon: '👥', label: 'Customers' },
       { key: 'OrderHistory', icon: '📋', label: 'History'   },
       { key: 'Recovery',     icon: '💰', label: 'Recovery'  },
@@ -307,26 +309,38 @@ export default function WebLayout({ navigation }) {
       <View style={wl.mobileRoot}>
         <InstallBanner />
 
-        {/* Top header */}
+        {/* ── Top Header ── */}
         <View style={wl.mobileHeader}>
           <View style={wl.mobileBrandRow}>
-            <AppLogo size={36} variant="icon" />
-            <View style={{ flex: 1 }}>
+            {/* Logo */}
+            <AppLogo size={34} variant="icon" />
+
+            {/* Brand */}
+            <View style={{ flex: 1, marginLeft: 8 }}>
               <Text style={wl.mobileBrandName}>Dawood Trader</Text>
               <Text style={wl.mobileBrandSub}>Distribution System</Text>
             </View>
+
+            {/* Install App */}
             <InstallPWA compact />
-            <TouchableOpacity style={wl.mobileIconBtn} onPress={() => switchTab('Cart')}>
-              <Text style={{ fontSize: 17 }}>🛒</Text>
+
+            {/* Cart */}
+            <TouchableOpacity style={wl.mobileIconBtn} onPress={() => goToTab('Cart')}>
+              <Text style={{ fontSize: 16 }}>🛒</Text>
               {itemCount > 0 && (
                 <View style={wl.mobileIconBadge}>
                   <Text style={wl.mobileIconBadgeTxt}>{itemCount > 9 ? '9+' : itemCount}</Text>
                 </View>
               )}
             </TouchableOpacity>
+
+            {/* LOGOUT — always visible on mobile */}
+            <TouchableOpacity style={wl.mobileLogoutBtn} onPress={handleLogout} activeOpacity={0.8}>
+              <Text style={wl.mobileLogoutIcon}>⏏</Text>
+            </TouchableOpacity>
           </View>
 
-          {/* Nav tabs */}
+          {/* ── Nav Tabs ── */}
           <ScrollView
             horizontal showsHorizontalScrollIndicator={false}
             style={wl.mobileNavBar}
@@ -336,7 +350,7 @@ export default function WebLayout({ navigation }) {
               <TouchableOpacity
                 key={tab.key}
                 style={[wl.mobileTab, activeTab === tab.key && wl.mobileTabActive]}
-                onPress={() => switchTab(tab.key)}
+                onPress={() => goToTab(tab.key)}   // ← goToTab resets history
               >
                 <Text style={[wl.mobileTabIcon, activeTab === tab.key && wl.mobileTabIconActive]}>
                   {tab.icon}
@@ -354,7 +368,7 @@ export default function WebLayout({ navigation }) {
           </ScrollView>
         </View>
 
-        {/* Back bar — appears when navigated to sub-screen */}
+        {/* ── Back Bar (only for sub-screens: CustomerProfile, AddProduct) ── */}
         <MobileBackBar canGoBack={canGoBack} onBack={goBack} activeTab={activeTab} />
 
         <View style={wl.mobileContent}>{renderContent()}</View>
@@ -380,7 +394,7 @@ export default function WebLayout({ navigation }) {
             <Text style={wl.navSectionLabel}>MAIN</Text>
             {MAIN_TABS.map(t => (
               <NavItem key={t.key} tab={t} isActive={activeTab === t.key}
-                onPress={() => switchTab(t.key)} badge={t.key === 'Cart' ? itemCount : 0} />
+                onPress={() => goToTab(t.key)} badge={t.key === 'Cart' ? itemCount : 0} />
             ))}
           </View>
           {isAdmin && (
@@ -388,7 +402,7 @@ export default function WebLayout({ navigation }) {
               <Text style={wl.navSectionLabel}>BUSINESS</Text>
               {BUSINESS_TABS.map(t => (
                 <NavItem key={t.key} tab={t} isActive={activeTab === t.key}
-                  onPress={() => switchTab(t.key)} />
+                  onPress={() => goToTab(t.key)} />
               ))}
             </View>
           )}
@@ -397,7 +411,7 @@ export default function WebLayout({ navigation }) {
               <Text style={wl.navSectionLabel}>ADMIN</Text>
               {ADMIN_TABS.map(t => (
                 <NavItem key={t.key} tab={t} isActive={activeTab === t.key}
-                  onPress={() => switchTab(t.key)} />
+                  onPress={() => goToTab(t.key)} />
               ))}
             </View>
           )}
@@ -406,7 +420,7 @@ export default function WebLayout({ navigation }) {
             <NavItem
               tab={{ key: 'Profile', label: 'My Profile', icon: '👤' }}
               isActive={activeTab === 'Profile'}
-              onPress={() => switchTab('Profile')}
+              onPress={() => goToTab('Profile')}
             />
           </View>
         </ScrollView>
@@ -529,9 +543,11 @@ const wl = StyleSheet.create({
   mobileBrandRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingTop: 12, paddingBottom: 8 },
   mobileBrandName:  { color: '#fff', fontSize: 14, fontWeight: '800' },
   mobileBrandSub:   { color: 'rgba(255,255,255,0.5)', fontSize: 9, marginTop: 1 },
-  mobileIconBtn:    { position: 'relative', width: 34, height: 34, borderRadius: 9, backgroundColor: 'rgba(255,255,255,0.14)', justifyContent: 'center', alignItems: 'center' },
+  mobileIconBtn:    { position: 'relative', width: 32, height: 32, borderRadius: 9, backgroundColor: 'rgba(255,255,255,0.14)', justifyContent: 'center', alignItems: 'center' },
   mobileIconBadge:  { position: 'absolute', top: 2, right: 2, backgroundColor: '#ef4444', borderRadius: 5, minWidth: 12, height: 12, justifyContent: 'center', alignItems: 'center' },
   mobileIconBadgeTxt:{ color: '#fff', fontSize: 7, fontWeight: '800' },
+  mobileLogoutBtn:  { width: 32, height: 32, borderRadius: 9, backgroundColor: 'rgba(220,38,38,0.22)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(220,38,38,0.35)' },
+  mobileLogoutIcon: { fontSize: 16, color: '#fca5a5' },
 
   mobileNavBar:    { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.12)' },
   mobileNavContent:{ flexDirection: 'row', paddingHorizontal: 4, paddingVertical: 2 },
