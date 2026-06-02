@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Alert,
   useWindowDimensions, Platform, ScrollView,
@@ -10,7 +10,7 @@ import { useCart }   from '../context/CartContext';
 import { useLang }   from '../context/LanguageContext';
 import { C }         from '../constants/theme';
 import InstallPWA, { InstallBanner } from '../components/InstallPWA';
-import AppLogo from '../components/AppLogo';
+import AppLogo       from '../components/AppLogo';
 
 import HomeScreen            from './HomeScreen';
 import CartScreen            from './CartScreen';
@@ -24,19 +24,19 @@ import RecoveryScreen        from './RecoveryScreen';
 import AdminScreen           from './AdminScreen';
 import CustomerProfileScreen from './CustomerProfileScreen';
 
-// ── Page metadata (title + icon per tab) ───────────────────────
+// ── Page metadata ──────────────────────────────────────────────
 const PAGE_META = {
-  Dashboard:       { title: 'Dashboard',       icon: '📊' },
-  Home:            { title: 'Products',         icon: '🛍️' },
-  Cart:            { title: 'Cart',             icon: '🛒' },
-  Customers:       { title: 'Customers',        icon: '👥' },
-  NewOrder:        { title: 'New Order',        icon: '📝' },
-  OrderHistory:    { title: 'Order History',    icon: '📋' },
-  Recovery:        { title: 'Recovery',         icon: '💰' },
-  Inventory:       { title: 'Inventory',        icon: '📦' },
-  AddProduct:      { title: 'Add Product',      icon: '➕' },
-  Profile:         { title: 'My Profile',       icon: '👤' },
-  CustomerProfile: { title: 'Customer Profile', icon: '👤' },
+  Dashboard:       { title: 'Dashboard',        icon: '📊' },
+  Home:            { title: 'Products',          icon: '🛍️' },
+  Cart:            { title: 'Cart',              icon: '🛒' },
+  Customers:       { title: 'Customers',         icon: '👥' },
+  NewOrder:        { title: 'New Order',         icon: '📝' },
+  OrderHistory:    { title: 'Order History',     icon: '📋' },
+  Recovery:        { title: 'Recovery',          icon: '💰' },
+  Inventory:       { title: 'Inventory',         icon: '📦' },
+  AddProduct:      { title: 'Add Product',       icon: '➕' },
+  Profile:         { title: 'My Profile',        icon: '👤' },
+  CustomerProfile: { title: 'Customer Profile',  icon: '👤' },
 };
 
 const MAIN_TABS = [
@@ -78,7 +78,7 @@ function NavItem({ tab, isActive, onPress, badge }) {
   );
 }
 
-// ── Language Toggle ────────────────────────────────────────────
+// ── Language toggle ────────────────────────────────────────────
 function LangToggle() {
   const { lang, switchLang } = useLang();
   return (
@@ -98,8 +98,8 @@ function LangToggle() {
   );
 }
 
-// ── Desktop TopBar (sits above content, below nothing) ─────────
-function TopBar({ activeTab, switchTab, user, isAdmin, onLogout, itemCount }) {
+// ── Desktop TopBar ─────────────────────────────────────────────
+function TopBar({ activeTab, switchTab, user, itemCount, canGoBack, onBack }) {
   const meta     = PAGE_META[activeTab] || { title: activeTab, icon: '📄' };
   const initials = user?.displayName
     ? user.displayName.split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -107,44 +107,59 @@ function TopBar({ activeTab, switchTab, user, isAdmin, onLogout, itemCount }) {
 
   return (
     <View style={wl.topBar}>
-      {/* Page title */}
       <View style={wl.topBarLeft}>
+        {canGoBack && (
+          <TouchableOpacity style={wl.backBtn} onPress={onBack} activeOpacity={0.8}>
+            <Text style={wl.backBtnTxt}>←</Text>
+          </TouchableOpacity>
+        )}
         <Text style={wl.topBarIcon}>{meta.icon}</Text>
         <Text style={wl.topBarTitle}>{meta.title}</Text>
       </View>
-
-      {/* Right actions */}
       <View style={wl.topBarRight}>
-        {/* Install App — ALWAYS visible */}
         <InstallPWA />
-
-        {/* Language */}
         <LangToggle />
-
-        {/* Cart badge */}
-        <TouchableOpacity style={wl.topBarBtn} onPress={() => switchTab('Cart')}>
-          <Text style={wl.topBarBtnIcon}>🛒</Text>
+        <TouchableOpacity style={wl.topIconBtn} onPress={() => switchTab('Cart')}>
+          <Text style={{ fontSize: 16 }}>🛒</Text>
           {itemCount > 0 && (
-            <View style={wl.topCartBadge}>
-              <Text style={wl.topCartBadgeTxt}>{itemCount > 9 ? '9+' : itemCount}</Text>
+            <View style={wl.topBadge}>
+              <Text style={wl.topBadgeTxt}>{itemCount > 9 ? '9+' : itemCount}</Text>
             </View>
           )}
         </TouchableOpacity>
-
-        {/* User avatar */}
-        <TouchableOpacity style={wl.topUserAvatar} onPress={() => switchTab('Profile')}>
-          <Text style={wl.topUserAvatarTxt}>{initials}</Text>
+        <TouchableOpacity style={wl.topAvatar} onPress={() => switchTab('Profile')}>
+          <Text style={wl.topAvatarTxt}>{initials}</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-// ── Main Component ─────────────────────────────────────────────
+// ── Mobile back bar (shown when canGoBack) ─────────────────────
+function MobileBackBar({ canGoBack, onBack, activeTab }) {
+  if (!canGoBack) return null;
+  const meta = PAGE_META[activeTab] || { title: activeTab, icon: '📄' };
+  return (
+    <View style={wl.mobileBackBar}>
+      <TouchableOpacity style={wl.mobileBackBtn} onPress={onBack} activeOpacity={0.8}>
+        <Text style={wl.mobileBackArrow}>←</Text>
+        <Text style={wl.mobileBackTxt}>Back</Text>
+      </TouchableOpacity>
+      <Text style={wl.mobileBackPage}>{meta.icon} {meta.title}</Text>
+      <View style={{ width: 70 }} />
+    </View>
+  );
+}
+
+// ── Main WebLayout ─────────────────────────────────────────────
 export default function WebLayout({ navigation }) {
   const [activeTab,      setActiveTab]      = useState('Dashboard');
   const [tabProduct,     setTabProduct]     = useState(null);
   const [viewCustomerId, setViewCustomerId] = useState(null);
+
+  // Navigation history stack for back button
+  const [navHistory, setNavHistory]   = useState(['Dashboard']);
+  const historyRef                    = useRef(['Dashboard']);
 
   const { user, isAdmin, demoLogout } = useAuth();
   const { itemCount }                 = useCart();
@@ -156,6 +171,31 @@ export default function WebLayout({ navigation }) {
       ? user.displayName.split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase().slice(0, 2)
       : (user?.email?.[0] || '?').toUpperCase(),
     [user]);
+
+  // ── Android/Browser back button handler ───────────────────
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+
+    // Set initial history state
+    window.history.replaceState({ tab: 'Dashboard', idx: 0 }, '', '/');
+
+    const onPopState = () => {
+      const hist = historyRef.current;
+      if (hist.length > 1) {
+        const newHistory = hist.slice(0, -1);
+        const prevTab    = newHistory[newHistory.length - 1];
+        historyRef.current = newHistory;
+        setNavHistory(newHistory);
+        setActiveTab(prevTab);
+        // Re-push so we don't fall off the end
+        window.history.pushState({ tab: prevTab, idx: newHistory.length }, '', '/');
+      }
+      // If only 1 item left — let the browser handle (exit PWA / go to prev page)
+    };
+
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
   const handleLogout = useCallback(() => {
     if (Platform.OS === 'web') {
@@ -169,21 +209,50 @@ export default function WebLayout({ navigation }) {
     ]);
   }, [demoLogout]);
 
+  // ── switchTab: pushes to history stack ────────────────────
   const switchTab = useCallback((key, data = null) => {
     setActiveTab(key);
     if (key === 'AddProduct')      setTabProduct(data);
     if (key === 'CustomerProfile') setViewCustomerId(data);
+
+    setNavHistory(prev => {
+      // Don't stack duplicates
+      if (prev[prev.length - 1] === key) return prev;
+      const next = [...prev, key];
+      historyRef.current = next;
+      // Push browser state for hardware back button
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.history.pushState({ tab: key, idx: next.length }, '', '/');
+      }
+      return next;
+    });
   }, []);
+
+  // ── goBack: pops history stack ─────────────────────────────
+  const goBack = useCallback(() => {
+    const hist = historyRef.current;
+    if (hist.length <= 1) return;
+    const newHistory = hist.slice(0, -1);
+    const prevTab    = newHistory[newHistory.length - 1];
+    historyRef.current = newHistory;
+    setNavHistory(newHistory);
+    setActiveTab(prevTab);
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.history.back();
+    }
+  }, []);
+
+  const canGoBack = navHistory.length > 1;
 
   const viewCustomer = useCallback((id) => {
     setViewCustomerId(id);
-    setActiveTab('CustomerProfile');
-  }, []);
+    switchTab('CustomerProfile', id);
+  }, [switchTab]);
 
   const editProduct = useCallback((product) => {
     setTabProduct(product);
-    setActiveTab('AddProduct');
-  }, []);
+    switchTab('AddProduct', product);
+  }, [switchTab]);
 
   // ── Content renderer ───────────────────────────────────────
   const renderContent = useCallback(() => {
@@ -211,15 +280,16 @@ export default function WebLayout({ navigation }) {
           <CustomerProfileScreen
             customerId={viewCustomerId}
             switchTab={switchTab}
-            onClose={() => switchTab('Customers')}
+            onClose={goBack}
           />
         );
       default: return <DashboardScreen {...base} />;
     }
-  }, [activeTab, navigation, switchTab, viewCustomer, editProduct, tabProduct, viewCustomerId]);
+  }, [activeTab, navigation, switchTab, viewCustomer, editProduct,
+      tabProduct, viewCustomerId, goBack]);
 
   /* ──────────────────────────────────────────────────────────
-     MOBILE LAYOUT
+     MOBILE
   ────────────────────────────────────────────────────────── */
   if (isMobile) {
     const mobileTabs = [
@@ -235,34 +305,30 @@ export default function WebLayout({ navigation }) {
 
     return (
       <View style={wl.mobileRoot}>
-        {/* Auto install banner */}
         <InstallBanner />
-        {/* ── Mobile Top Header ── */}
+
+        {/* Top header */}
         <View style={wl.mobileHeader}>
           <View style={wl.mobileBrandRow}>
-            {/* Logo */}
             <AppLogo size={36} variant="icon" />
             <View style={{ flex: 1 }}>
               <Text style={wl.mobileBrandName}>Dawood Trader</Text>
               <Text style={wl.mobileBrandSub}>Distribution System</Text>
             </View>
-            {/* Install button — always visible on mobile header */}
             <InstallPWA compact />
-            {/* Cart */}
-            <TouchableOpacity style={wl.mobileHeaderBtn} onPress={() => switchTab('Cart')}>
+            <TouchableOpacity style={wl.mobileIconBtn} onPress={() => switchTab('Cart')}>
               <Text style={{ fontSize: 17 }}>🛒</Text>
               {itemCount > 0 && (
-                <View style={wl.mobileHeaderBadge}>
-                  <Text style={wl.mobileHeaderBadgeTxt}>{itemCount > 9 ? '9+' : itemCount}</Text>
+                <View style={wl.mobileIconBadge}>
+                  <Text style={wl.mobileIconBadgeTxt}>{itemCount > 9 ? '9+' : itemCount}</Text>
                 </View>
               )}
             </TouchableOpacity>
           </View>
 
-          {/* Horizontal nav tabs */}
+          {/* Nav tabs */}
           <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
+            horizontal showsHorizontalScrollIndicator={false}
             style={wl.mobileNavBar}
             contentContainerStyle={wl.mobileNavContent}
           >
@@ -288,27 +354,27 @@ export default function WebLayout({ navigation }) {
           </ScrollView>
         </View>
 
+        {/* Back bar — appears when navigated to sub-screen */}
+        <MobileBackBar canGoBack={canGoBack} onBack={goBack} activeTab={activeTab} />
+
         <View style={wl.mobileContent}>{renderContent()}</View>
       </View>
     );
   }
 
   /* ──────────────────────────────────────────────────────────
-     DESKTOP LAYOUT
+     DESKTOP
   ────────────────────────────────────────────────────────── */
   return (
     <View style={wl.root}>
-      {/* Auto install banner — shows once when PWA is installable */}
       <InstallBanner />
 
-      {/* ── SIDEBAR ── */}
+      {/* Sidebar */}
       <View style={wl.sidebar}>
-        {/* Brand / Logo */}
         <View style={wl.brand}>
           <AppLogo size={38} variant="sidebar" />
         </View>
 
-        {/* Nav */}
         <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
           <View style={wl.navSection}>
             <Text style={wl.navSectionLabel}>MAIN</Text>
@@ -317,7 +383,6 @@ export default function WebLayout({ navigation }) {
                 onPress={() => switchTab(t.key)} badge={t.key === 'Cart' ? itemCount : 0} />
             ))}
           </View>
-
           {isAdmin && (
             <View style={wl.navSection}>
               <Text style={wl.navSectionLabel}>BUSINESS</Text>
@@ -327,7 +392,6 @@ export default function WebLayout({ navigation }) {
               ))}
             </View>
           )}
-
           {isAdmin && (
             <View style={wl.navSection}>
               <Text style={wl.navSectionLabel}>ADMIN</Text>
@@ -337,7 +401,6 @@ export default function WebLayout({ navigation }) {
               ))}
             </View>
           )}
-
           <View style={wl.navSection}>
             <Text style={wl.navSectionLabel}>ACCOUNT</Text>
             <NavItem
@@ -348,7 +411,6 @@ export default function WebLayout({ navigation }) {
           </View>
         </ScrollView>
 
-        {/* Sidebar footer */}
         <View style={wl.sideFooter}>
           {IS_DEMO && (
             <View style={wl.demoPill}><Text style={wl.demoPillTxt}>🧪 Demo Mode</Text></View>
@@ -367,21 +429,17 @@ export default function WebLayout({ navigation }) {
         </View>
       </View>
 
-      {/* ── CONTENT AREA ── */}
+      {/* Content */}
       <View style={wl.contentArea}>
-        {/* Professional TopBar with Install button */}
         <TopBar
           activeTab={activeTab}
           switchTab={switchTab}
           user={user}
-          isAdmin={isAdmin}
-          onLogout={handleLogout}
           itemCount={itemCount}
+          canGoBack={canGoBack}
+          onBack={goBack}
         />
-        {/* Page content */}
-        <View style={wl.content}>
-          {renderContent()}
-        </View>
+        <View style={wl.content}>{renderContent()}</View>
       </View>
     </View>
   );
@@ -396,30 +454,16 @@ const wl = StyleSheet.create({
     ...(Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}),
   },
 
-  /* ── Sidebar ── */
-  sidebar: {
-    width: 220, backgroundColor: '#0f172a',
-    flexDirection: 'column', overflow: 'hidden',
-  },
+  /* Sidebar */
+  sidebar: { width: 220, backgroundColor: '#0f172a', flexDirection: 'column', overflow: 'hidden' },
 
   brand: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: 16, paddingVertical: 18,
+    paddingHorizontal: 14, paddingVertical: 16,
     borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)',
   },
-  brandLogo: {
-    width: 38, height: 38, borderRadius: 10,
-    backgroundColor: C.primary,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  brandName: { color: '#f1f5f9', fontSize: 13, fontWeight: '800' },
-  brandSub:  { color: 'rgba(255,255,255,0.3)', fontSize: 9, marginTop: 1 },
 
   navSection:      { paddingHorizontal: 10, paddingTop: 18 },
-  navSectionLabel: {
-    color: 'rgba(255,255,255,0.22)', fontSize: 9, fontWeight: '700',
-    letterSpacing: 1.4, paddingHorizontal: 8, marginBottom: 4,
-  },
+  navSectionLabel: { color: 'rgba(255,255,255,0.22)', fontSize: 9, fontWeight: '700', letterSpacing: 1.4, paddingHorizontal: 8, marginBottom: 4 },
 
   navItem:         { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 9, borderRadius: 9, marginBottom: 1 },
   navItemActive:   { backgroundColor: 'rgba(37,99,235,0.28)' },
@@ -431,10 +475,7 @@ const wl = StyleSheet.create({
   navBadge:        { backgroundColor: '#ef4444', borderRadius: 8, minWidth: 16, height: 16, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3 },
   navBadgeTxt:     { color: '#fff', fontSize: 8, fontWeight: '800' },
 
-  sideFooter: {
-    paddingHorizontal: 12, paddingVertical: 14,
-    borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.07)', gap: 8,
-  },
+  sideFooter: { paddingHorizontal: 12, paddingVertical: 14, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.07)', gap: 8 },
   demoPill:    { backgroundColor: 'rgba(245,158,11,0.13)', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: 'rgba(245,158,11,0.22)', alignSelf: 'flex-start' },
   demoPillTxt: { color: '#fbbf24', fontSize: 9, fontWeight: '700' },
   userRow:     { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -445,28 +486,36 @@ const wl = StyleSheet.create({
   logoutBtn:   { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8, backgroundColor: 'rgba(220,38,38,0.1)', borderWidth: 1, borderColor: 'rgba(220,38,38,0.18)' },
   logoutTxt:   { color: '#fca5a5', fontSize: 11, fontWeight: '600' },
 
-  /* ── Content area ── */
+  /* Content area */
   contentArea: { flex: 1, flexDirection: 'column', minWidth: 0, overflow: 'hidden' },
   content:     { flex: 1, minHeight: 0, overflow: 'hidden' },
 
-  /* ── TopBar ── */
+  /* TopBar */
   topBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: '#fff', paddingHorizontal: 24, paddingVertical: 14,
+    backgroundColor: '#fff', paddingHorizontal: 20, paddingVertical: 12,
     borderBottomWidth: 1, borderBottomColor: '#e8edf5',
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06, shadowRadius: 4, elevation: 2, zIndex: 10,
+    shadowOpacity: 0.05, shadowRadius: 4, elevation: 2, zIndex: 10,
   },
   topBarLeft:  { flexDirection: 'row', alignItems: 'center', gap: 10 },
   topBarIcon:  { fontSize: 20 },
   topBarTitle: { fontSize: 18, fontWeight: '800', color: '#0f172a' },
-  topBarRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  topBarBtn:   { position: 'relative', width: 36, height: 36, borderRadius: 9, backgroundColor: '#f4f7fc', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#e8edf5' },
-  topBarBtnIcon: { fontSize: 16 },
-  topCartBadge:   { position: 'absolute', top: 4, right: 4, backgroundColor: '#ef4444', borderRadius: 6, minWidth: 12, height: 12, justifyContent: 'center', alignItems: 'center' },
-  topCartBadgeTxt:{ color: '#fff', fontSize: 7, fontWeight: '800' },
-  topUserAvatar:  { width: 36, height: 36, borderRadius: 18, backgroundColor: C.primary, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#bfdbfe' },
-  topUserAvatarTxt: { color: '#fff', fontSize: 13, fontWeight: '800' },
+  topBarRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+
+  /* Back button in TopBar */
+  backBtn: {
+    width: 34, height: 34, borderRadius: 9,
+    backgroundColor: '#f1f5f9', justifyContent: 'center', alignItems: 'center',
+    borderWidth: 1, borderColor: '#e2e8f0',
+  },
+  backBtnTxt: { fontSize: 18, color: '#0f172a', fontWeight: '700' },
+
+  topIconBtn:   { position: 'relative', width: 34, height: 34, borderRadius: 9, backgroundColor: '#f4f7fc', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#e8edf5' },
+  topBadge:     { position: 'absolute', top: 4, right: 4, backgroundColor: '#ef4444', borderRadius: 5, minWidth: 11, height: 11, justifyContent: 'center', alignItems: 'center' },
+  topBadgeTxt:  { color: '#fff', fontSize: 6, fontWeight: '800' },
+  topAvatar:    { width: 34, height: 34, borderRadius: 17, backgroundColor: C.primary, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#bfdbfe' },
+  topAvatarTxt: { color: '#fff', fontSize: 12, fontWeight: '800' },
 
   langRow:      { flexDirection: 'row', gap: 4 },
   langBtn:      { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 7, borderWidth: 1, borderColor: '#e2e8f0', backgroundColor: '#f8fafc' },
@@ -474,19 +523,15 @@ const wl = StyleSheet.create({
   langTxt:      { color: '#64748b', fontSize: 11, fontWeight: '600' },
   langTxtActive:{ color: C.primary, fontWeight: '800' },
 
-  /* ── Mobile ── */
+  /* Mobile */
   mobileRoot:   { flex: 1, flexDirection: 'column', backgroundColor: '#f0f4fa' },
-  mobileHeader: { backgroundColor: C.primary, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 4 },
-  mobileBrandRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingHorizontal: 14, paddingTop: 14, paddingBottom: 10,
-  },
-  mobileLogo:       { width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.18)', justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.25)' },
+  mobileHeader: { backgroundColor: C.primary },
+  mobileBrandRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingTop: 12, paddingBottom: 8 },
   mobileBrandName:  { color: '#fff', fontSize: 14, fontWeight: '800' },
   mobileBrandSub:   { color: 'rgba(255,255,255,0.5)', fontSize: 9, marginTop: 1 },
-  mobileHeaderBtn:  { position: 'relative', width: 34, height: 34, borderRadius: 9, backgroundColor: 'rgba(255,255,255,0.14)', justifyContent: 'center', alignItems: 'center' },
-  mobileHeaderBadge:    { position: 'absolute', top: 2, right: 2, backgroundColor: '#ef4444', borderRadius: 6, minWidth: 13, height: 13, justifyContent: 'center', alignItems: 'center' },
-  mobileHeaderBadgeTxt: { color: '#fff', fontSize: 7, fontWeight: '800' },
+  mobileIconBtn:    { position: 'relative', width: 34, height: 34, borderRadius: 9, backgroundColor: 'rgba(255,255,255,0.14)', justifyContent: 'center', alignItems: 'center' },
+  mobileIconBadge:  { position: 'absolute', top: 2, right: 2, backgroundColor: '#ef4444', borderRadius: 5, minWidth: 12, height: 12, justifyContent: 'center', alignItems: 'center' },
+  mobileIconBadgeTxt:{ color: '#fff', fontSize: 7, fontWeight: '800' },
 
   mobileNavBar:    { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.12)' },
   mobileNavContent:{ flexDirection: 'row', paddingHorizontal: 4, paddingVertical: 2 },
@@ -498,6 +543,17 @@ const wl = StyleSheet.create({
   mobileTabLabelActive:{ color: '#fff', fontWeight: '700' },
   mobileTabBadge:     { position: 'absolute', top: 3, right: 6, backgroundColor: '#ef4444', borderRadius: 5, minWidth: 12, height: 12, justifyContent: 'center', alignItems: 'center' },
   mobileTabBadgeTxt:  { color: '#fff', fontSize: 7, fontWeight: '800' },
+
+  /* Mobile back bar */
+  mobileBackBar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#fff', paddingHorizontal: 12, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: '#e8edf5',
+  },
+  mobileBackBtn:   { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: '#f1f5f9', borderRadius: 10, borderWidth: 1, borderColor: '#e2e8f0' },
+  mobileBackArrow: { fontSize: 16, color: C.primary, fontWeight: '700' },
+  mobileBackTxt:   { fontSize: 13, color: C.primary, fontWeight: '700' },
+  mobileBackPage:  { fontSize: 13, fontWeight: '700', color: '#0f172a' },
 
   mobileContent: { flex: 1, minHeight: 0, overflow: 'hidden' },
 });

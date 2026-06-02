@@ -12,13 +12,13 @@
   "categories": ["business", "finance", "productivity"],
   "icons": [
     {
-      "src": "/assets/icon.png",
+      "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/assets/icon.png",
+      "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
@@ -26,9 +26,8 @@
   ],
   "shortcuts": [
     { "name": "New Order",  "url": "/", "description": "Create a new customer bill" },
-    { "name": "Customers",  "url": "/", "description": "View customer list"          },
-    { "name": "Dashboard",  "url": "/", "description": "View business overview"      }
+    { "name": "Customers",  "url": "/", "description": "View customers" },
+    { "name": "Recovery",   "url": "/", "description": "View outstanding payments" }
   ],
-  "screenshots": [],
   "prefer_related_applications": false
 }

@@ -20,6 +20,14 @@ const WEB  = path.join(__dirname, '..', 'web');
   }
 });
 
+// Copy app icons to dist root (PWA requires exact paths in manifest)
+const iconSrc = path.join(__dirname, '..', 'assets', 'icon.png');
+if (fs.existsSync(iconSrc)) {
+  fs.copyFileSync(iconSrc, path.join(DIST, 'icon-192.png'));
+  fs.copyFileSync(iconSrc, path.join(DIST, 'icon-512.png'));
+  console.log('✅ App icons copied → dist/icon-192.png + icon-512.png');
+}
+
 // Patch dist/index.html — inject manifest + SW registration
 const indexPath = path.join(DIST, 'index.html');
 if (!fs.existsSync(indexPath)) {
