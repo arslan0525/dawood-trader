@@ -38,11 +38,12 @@ import AdminScreen         from './screens/AdminScreen';
 import AddItemScreen       from './screens/AddItemScreen';
 import ProfileScreen       from './screens/ProfileScreen';
 import WebLayout           from './screens/WebLayout';
-import DashboardScreen     from './screens/DashboardScreen';
-import CustomersScreen     from './screens/CustomersScreen';
-import OrdersScreen        from './screens/OrdersScreen';
-import OrderHistoryScreen  from './screens/OrderHistoryScreen';
-import RecoveryScreen      from './screens/RecoveryScreen';
+import DashboardScreen       from './screens/DashboardScreen';
+import CustomersScreen       from './screens/CustomersScreen';
+import OrdersScreen          from './screens/OrdersScreen';
+import OrderHistoryScreen    from './screens/OrderHistoryScreen';
+import RecoveryScreen        from './screens/RecoveryScreen';
+import CustomerProfileScreen from './screens/CustomerProfileScreen';
 
 const Stack = createStackNavigator();
 const Tab   = createBottomTabNavigator();
@@ -163,9 +164,10 @@ function AppNavigator() {
           <Stack.Screen name="ProductDetail" component={ProductDetailScreen}/>
           <Stack.Screen name="Admin"         component={AdminScreen}        />
           <Stack.Screen name="AddItem"       component={AddItemScreen}      />
-          <Stack.Screen name="Orders"        component={OrdersScreen}       />
-          <Stack.Screen name="OrderHistory"  component={OrderHistoryScreen} />
-          <Stack.Screen name="Recovery"      component={RecoveryScreen}     />
+          <Stack.Screen name="Orders"          component={OrdersScreen}          />
+          <Stack.Screen name="OrderHistory"  component={OrderHistoryScreen}    />
+          <Stack.Screen name="Recovery"      component={RecoveryScreen}        />
+          <Stack.Screen name="CustomerProfile" component={CustomerProfileScreen} />
         </>
       ) : (
         <>

@@ -1,47 +1,68 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { onAuthStateChanged, updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
+import { Platform } from 'react-native';
+import {
+  onAuthStateChanged, updateProfile, updatePassword,
+  EmailAuthProvider, reauthenticateWithCredential,
+  sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink,
+} from 'firebase/auth';
 import { auth, IS_DEMO } from '../services/firebase';
 import { DEMO_USER, DEMO_ADMIN } from '../services/demoData';
 
 const AuthContext = createContext();
 export const ADMIN_EMAIL = 'admin@dawoodtrader.com';
 
-// ── Demo session persistence via localStorage ──────────────
-// Keeps user logged in across page refreshes in demo mode.
-const SESS_KEY = 'dt_demo_v1';
+const SESS_KEY       = 'dt_demo_v1';
+const ML_EMAIL_KEY   = 'dt_ml_email';
+const AVATAR_KEY     = 'dt_avatar_v1';
 
-function loadPersistedSession() {
-  try {
-    if (typeof localStorage !== 'undefined') {
-      const raw = localStorage.getItem(SESS_KEY);
-      return raw ? JSON.parse(raw) : null;
-    }
-  } catch {}
-  return null;
+function loadSession() {
+  try { return typeof localStorage !== 'undefined' ? JSON.parse(localStorage.getItem(SESS_KEY) || 'null') : null; } catch { return null; }
+}
+function saveSession(u) {
+  try { if (typeof localStorage !== 'undefined') { u ? localStorage.setItem(SESS_KEY, JSON.stringify(u)) : localStorage.removeItem(SESS_KEY); } } catch {}
+}
+function loadAvatar() {
+  try { return typeof localStorage !== 'undefined' ? localStorage.getItem(AVATAR_KEY) || null : null; } catch { return null; }
+}
+function saveAvatar(url) {
+  try { if (typeof localStorage !== 'undefined') { url ? localStorage.setItem(AVATAR_KEY, url) : localStorage.removeItem(AVATAR_KEY); } } catch {}
 }
 
-function persistSession(user) {
-  try {
-    if (typeof localStorage !== 'undefined') {
-      if (user) localStorage.setItem(SESS_KEY, JSON.stringify(user));
-      else localStorage.removeItem(SESS_KEY);
-    }
-  } catch {}
-}
+const MAGIC_LINK_SETTINGS = {
+  url: (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081') + '/',
+  handleCodeInApp: true,
+};
 
 export function AuthProvider({ children }) {
-  const [user, setUser]       = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user,        setUser]       = useState(null);
+  const [loading,     setLoading]    = useState(true);
+  const [magicSent,   setMagicSent]  = useState(false);
+  const [avatar,      setAvatarState]= useState(loadAvatar);
 
   useEffect(() => {
     if (IS_DEMO) {
-      // Restore saved demo session so refresh doesn't log out the user
-      const saved = loadPersistedSession();
+      const saved = loadSession();
       if (saved) setUser(saved);
       setLoading(false);
       return;
     }
-    // Firebase handles its own persistence via browserLocalPersistence
+
+    // Handle magic link completion on web
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const href = window.location.href;
+      if (isSignInWithEmailLink(auth, href)) {
+        const savedEmail = localStorage.getItem(ML_EMAIL_KEY) || '';
+        if (savedEmail) {
+          signInWithEmailLink(auth, savedEmail, href)
+            .then(() => {
+              localStorage.removeItem(ML_EMAIL_KEY);
+              window.history.replaceState({}, '', '/');
+            })
+            .catch(console.error);
+        }
+      }
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (u) => {
       setUser(u);
       setLoading(false);
@@ -49,24 +70,32 @@ export function AuthProvider({ children }) {
     return unsubscribe;
   }, []);
 
+  // ── Demo login ────────────────────────────────────────────
   const demoLogin = (email) => {
     const u = email.trim().toLowerCase() === ADMIN_EMAIL ? DEMO_ADMIN : DEMO_USER;
-    setUser(u);
-    persistSession(u);
+    setUser(u); saveSession(u);
   };
+  const demoLogout = () => { setUser(null); saveSession(null); };
 
-  const demoLogout = () => {
-    setUser(null);
-    persistSession(null);
+  // ── Magic Link (email link auth) ──────────────────────────
+  const sendMagicLink = async (email) => {
+    if (!email?.trim()) throw new Error('Email likhein');
+    if (IS_DEMO) {
+      demoLogin(email);
+      return;
+    }
+    await sendSignInLinkToEmail(auth, email.trim(), MAGIC_LINK_SETTINGS);
+    try { localStorage.setItem(ML_EMAIL_KEY, email.trim()); } catch {}
+    setMagicSent(true);
   };
+  const resetMagicSent = () => setMagicSent(false);
 
+  // ── Profile updates ───────────────────────────────────────
   const updateDisplayName = async (newName) => {
     if (!newName.trim()) throw new Error('Name empty hai');
     if (IS_DEMO) {
       const updated = { ...user, displayName: newName.trim() };
-      setUser(updated);
-      persistSession(updated);
-      return;
+      setUser(updated); saveSession(updated); return;
     }
     await updateProfile(auth.currentUser, { displayName: newName.trim() });
     setUser(prev => ({ ...prev, displayName: newName.trim() }));
@@ -79,10 +108,29 @@ export function AuthProvider({ children }) {
     await updatePassword(auth.currentUser, newPassword);
   };
 
+  const updateAvatar = (url) => {
+    setAvatarState(url);
+    saveAvatar(url);
+    if (!IS_DEMO && auth.currentUser) {
+      updateProfile(auth.currentUser, { photoURL: url }).catch(() => {});
+    }
+    if (IS_DEMO) {
+      const updated = { ...user, photoURL: url };
+      setUser(updated); saveSession(updated);
+    }
+  };
+
   const isAdmin = user?.email === ADMIN_EMAIL;
+  const avatarUrl = avatar || user?.photoURL || null;
 
   return (
-    <AuthContext.Provider value={{ user, loading, isAdmin, IS_DEMO, demoLogin, demoLogout, updateDisplayName, changePassword }}>
+    <AuthContext.Provider value={{
+      user, loading, isAdmin, IS_DEMO,
+      magicSent, sendMagicLink, resetMagicSent,
+      demoLogin, demoLogout,
+      updateDisplayName, changePassword, updateAvatar,
+      avatarUrl,
+    }}>
       {children}
     </AuthContext.Provider>
   );

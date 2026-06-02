@@ -12,7 +12,7 @@ import { db, storage, IS_DEMO } from '../services/firebase';
 import { DEMO_PRODUCTS } from '../services/demoData';
 import { C, CAT } from '../constants/theme';
 
-export default function AdminScreen({ navigation, switchTab }) {
+export default function AdminScreen({ navigation, switchTab, editProduct }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState('');
@@ -164,9 +164,10 @@ export default function AdminScreen({ navigation, switchTab }) {
           <TouchableOpacity
             style={styles.editBtn}
             onPress={() => {
-              if (switchTab) {
-                // Navigate to AddProduct tab in WebLayout
-                switchTab('AddProduct');
+              if (editProduct) {
+                editProduct(item);  // passes product to AddProduct tab via WebLayout
+              } else if (switchTab) {
+                switchTab('AddProduct', item);
               } else {
                 navigation.navigate('AddItem', { product: item });
               }
@@ -194,7 +195,11 @@ export default function AdminScreen({ navigation, switchTab }) {
         <Text style={[styles.headerTitle, isWeb && styles.headerTitleWeb]}>📦 Inventory</Text>
         <TouchableOpacity
           style={styles.addBtnHeader}
-          onPress={() => switchTab ? switchTab('AddProduct') : navigation.navigate('AddItem', { product: null })}
+          onPress={() => {
+            if (editProduct) editProduct(null);
+            else if (switchTab) switchTab('AddProduct', null);
+            else navigation.navigate('AddItem', { product: null });
+          }}
         >
           <Text style={styles.addBtnHeaderText}>+ Add Product</Text>
         </TouchableOpacity>

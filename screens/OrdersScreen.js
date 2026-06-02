@@ -11,6 +11,71 @@ import { DEMO_PRODUCTS } from '../services/demoData';
 import { IS_DEMO } from '../services/firebase';
 import { C } from '../constants/theme';
 
+// ── Order Memory: previous orders for a customer ──────────────
+function OrderMemory({ customer, orders, onRepeat }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!customer) return null;
+
+  const prevOrders = orders
+    .filter(o => o.customerId === customer.id)
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .slice(0, 3);
+
+  if (prevOrders.length === 0) return null;
+
+  const last = prevOrders[0];
+  const daysAgo = Math.floor((Date.now() - last.createdAt) / 86400000);
+
+  return (
+    <View style={om.wrap}>
+      <TouchableOpacity style={om.header} onPress={() => setExpanded(e => !e)} activeOpacity={0.8}>
+        <View style={{ flex: 1 }}>
+          <Text style={om.title}>📦 Previous Orders ({prevOrders.length})</Text>
+          <Text style={om.sub}>Last order: {daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : `${daysAgo} days ago`}</Text>
+        </View>
+        <Text style={om.chevron}>{expanded ? '▲' : '▼'}</Text>
+      </TouchableOpacity>
+
+      {expanded && prevOrders.map((order, idx) => (
+        <View key={order.id} style={om.orderRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={om.orderId}>{order.id} · {new Date(order.createdAt).toLocaleDateString('en-PK', { day: '2-digit', month: 'short' })}</Text>
+            <Text style={om.orderItems} numberOfLines={2}>
+              {order.items?.map(i => `${i.productName} ×${i.quantity}`).join(' · ')}
+            </Text>
+            <Text style={om.orderTotal}>Rs.{(order.grandTotal || 0).toLocaleString()}</Text>
+          </View>
+          {idx === 0 && (
+            <TouchableOpacity style={om.repeatBtn} onPress={() => onRepeat(order.items)}>
+              <Text style={om.repeatBtnTxt}>↩ Repeat</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+const om = StyleSheet.create({
+  wrap: {
+    backgroundColor: '#fffbeb', borderRadius: 12, marginBottom: 12,
+    borderWidth: 1.5, borderColor: '#fde68a', overflow: 'hidden',
+  },
+  header:   { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12 },
+  title:    { fontSize: 13, fontWeight: '700', color: '#92400e' },
+  sub:      { fontSize: 11, color: '#a16207', marginTop: 1 },
+  chevron:  { fontSize: 11, color: '#a16207', fontWeight: '700' },
+  orderRow: {
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10,
+    borderTopWidth: 1, borderTopColor: '#fde68a', backgroundColor: '#fff9e6',
+  },
+  orderId:    { fontSize: 10, fontWeight: '700', color: '#a16207', marginBottom: 3 },
+  orderItems: { fontSize: 11, color: '#92400e', lineHeight: 16 },
+  orderTotal: { fontSize: 12, fontWeight: '800', color: '#a16207', marginTop: 3 },
+  repeatBtn:  { backgroundColor: '#f59e0b', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7, marginLeft: 8 },
+  repeatBtnTxt: { color: '#fff', fontSize: 11, fontWeight: '700' },
+});
+
 function fmtCurrency(n) {
   return 'Rs.' + (n || 0).toLocaleString();
 }
@@ -243,7 +308,7 @@ function BillModal({ visible, order, onClose, onNewOrder }) {
 
 // ── Main OrdersScreen ─────────────────────────────────────────
 export default function OrdersScreen({ switchTab }) {
-  const { customers, ROUTES, createOrder, getStock } = useAppData();
+  const { customers, orders, ROUTES, createOrder, getStock } = useAppData();
   const { t } = useLang();
   const { showToast } = useToast();
   const { width } = useWindowDimensions();
@@ -320,6 +385,11 @@ export default function OrdersScreen({ switchTab }) {
     setPaidAmount('');
     setNote('');
   };
+
+  const repeatOrder = useCallback((prevItems) => {
+    setItems(prevItems.map(item => ({ ...item })));
+    showToast('Previous order items loaded!', 'success');
+  }, [showToast]);
 
   const handleSave = async () => {
     if (!selectedCustomer) { showToast('Please select a customer', 'error'); return; }
@@ -411,6 +481,13 @@ export default function OrdersScreen({ switchTab }) {
               </View>
             )}
           </TouchableOpacity>
+
+          {/* Order Memory — show previous orders for selected customer */}
+          <OrderMemory
+            customer={selectedCustomer}
+            orders={orders}
+            onRepeat={repeatOrder}
+          />
 
           {/* Items */}
           <View style={or.stepHeader}>

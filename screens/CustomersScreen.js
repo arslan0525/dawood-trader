@@ -139,7 +139,7 @@ function CustomerModal({ visible, initial, routes, onSave, onClose, saving }) {
   );
 }
 
-export default function CustomersScreen({ switchTab }) {
+export default function CustomersScreen({ switchTab, viewCustomer }) {
   const { customers, orders, ROUTES, addCustomer, updateCustomer, deleteCustomer } = useAppData();
   const { t } = useLang();
   const { showToast } = useToast();
@@ -284,14 +284,19 @@ export default function CustomersScreen({ switchTab }) {
           </View>
         ) : (
           filtered.map(c => (
-            <CustomerCard
+            <TouchableOpacity
               key={c.id}
-              customer={c}
-              routes={ROUTES}
-              orders={orders}
-              onEdit={openEdit}
-              onDelete={handleDelete}
-            />
+              activeOpacity={0.9}
+              onPress={() => viewCustomer?.(c.id)}
+            >
+              <CustomerCard
+                customer={c}
+                routes={ROUTES}
+                orders={orders}
+                onEdit={openEdit}
+                onDelete={handleDelete}
+              />
+            </TouchableOpacity>
           ))
         )}
       </ScrollView>

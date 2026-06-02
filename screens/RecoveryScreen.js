@@ -111,7 +111,7 @@ function PaymentModal({ visible, order, onClose, onSuccess }) {
   );
 }
 
-export default function RecoveryScreen({ switchTab }) {
+export default function RecoveryScreen({ switchTab, viewCustomer }) {
   const { orders, customers, payments, ROUTES } = useAppData();
   const { t } = useLang();
   const { width } = useWindowDimensions();
@@ -262,7 +262,9 @@ export default function RecoveryScreen({ switchTab }) {
             <View key={order.id} style={rc.card}>
               <View style={rc.cardTop}>
                 <View style={{ flex: 1 }}>
-                  <Text style={rc.cardName}>{order.customerName}</Text>
+                  <TouchableOpacity onPress={() => viewCustomer?.(order.customerId)}>
+                    <Text style={[rc.cardName, viewCustomer && { color: C.primary }]}>{order.customerName}</Text>
+                  </TouchableOpacity>
                   <Text style={rc.cardSub}>{order.id} · {fmtDate(order.createdAt)}</Text>
                   <Text style={rc.cardRoute}>{ROUTES.find(r => r.id === order.routeId)?.name || '—'}</Text>
                 </View>

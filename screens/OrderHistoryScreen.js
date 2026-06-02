@@ -197,7 +197,7 @@ function BillDetailModal({ visible, order, routes, onClose, onAddPayment }) {
   );
 }
 
-export default function OrderHistoryScreen({ switchTab }) {
+export default function OrderHistoryScreen({ switchTab, viewCustomer }) {
   const { orders, customers, ROUTES, deleteOrder } = useAppData();
   const { t } = useLang();
   const { showToast } = useToast();
@@ -339,7 +339,9 @@ export default function OrderHistoryScreen({ switchTab }) {
           <TouchableOpacity key={order.id} style={oh.card} onPress={() => openDetail(order)} activeOpacity={0.85}>
             <View style={oh.cardTop}>
               <View style={{ flex: 1 }}>
-                <Text style={oh.cardCustomer} numberOfLines={1}>{order.customerName}</Text>
+                <TouchableOpacity onPress={() => viewCustomer?.(order.customerId)}>
+            <Text style={[oh.cardCustomer, viewCustomer && { color: C.primary, textDecorationLine: 'underline' }]} numberOfLines={1}>{order.customerName}</Text>
+          </TouchableOpacity>
                 <Text style={oh.cardId}>{order.id} · {fmtDate(order.createdAt)}</Text>
                 <Text style={oh.cardRoute}>{ROUTES.find(r => r.id === order.routeId)?.name || '—'}</Text>
               </View>
