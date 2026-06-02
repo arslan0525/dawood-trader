@@ -9,7 +9,8 @@ import { useAuth }   from '../context/AuthContext';
 import { useCart }   from '../context/CartContext';
 import { useLang }   from '../context/LanguageContext';
 import { C }         from '../constants/theme';
-import InstallPWA    from '../components/InstallPWA';
+import InstallPWA, { InstallBanner } from '../components/InstallPWA';
+import AppLogo from '../components/AppLogo';
 
 import HomeScreen            from './HomeScreen';
 import CartScreen            from './CartScreen';
@@ -234,13 +235,13 @@ export default function WebLayout({ navigation }) {
 
     return (
       <View style={wl.mobileRoot}>
+        {/* Auto install banner */}
+        <InstallBanner />
         {/* ── Mobile Top Header ── */}
         <View style={wl.mobileHeader}>
           <View style={wl.mobileBrandRow}>
             {/* Logo */}
-            <View style={wl.mobileLogo}>
-              <Text style={{ fontSize: 18 }}>🛒</Text>
-            </View>
+            <AppLogo size={36} variant="icon" />
             <View style={{ flex: 1 }}>
               <Text style={wl.mobileBrandName}>Dawood Trader</Text>
               <Text style={wl.mobileBrandSub}>Distribution System</Text>
@@ -297,18 +298,14 @@ export default function WebLayout({ navigation }) {
   ────────────────────────────────────────────────────────── */
   return (
     <View style={wl.root}>
+      {/* Auto install banner — shows once when PWA is installable */}
+      <InstallBanner />
 
       {/* ── SIDEBAR ── */}
       <View style={wl.sidebar}>
         {/* Brand / Logo */}
         <View style={wl.brand}>
-          <View style={wl.brandLogo}>
-            <Text style={{ fontSize: 20, lineHeight: 24 }}>🛒</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={wl.brandName}>Dawood Trader</Text>
-            <Text style={wl.brandSub}>Distribution System</Text>
-          </View>
+          <AppLogo size={38} variant="sidebar" />
         </View>
 
         {/* Nav */}

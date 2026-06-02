@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import {
   collection, onSnapshot, addDoc, updateDoc, deleteDoc,
   doc, query, orderBy, serverTimestamp,
@@ -285,17 +285,22 @@ export function AppDataProvider({ children }) {
     }
   }, []);
 
+  const contextValue = useMemo(() => ({
+    customers, orders, payments, stockOvr, loading,
+    ROUTES,
+    addCustomer, updateCustomer, deleteCustomer,
+    createOrder, deleteOrder,
+    addPayment,
+    setProductStock, getStock,
+    getStats,
+    exportData, importData,
+  }), [customers, orders, payments, stockOvr, loading,
+    addCustomer, updateCustomer, deleteCustomer,
+    createOrder, deleteOrder, addPayment,
+    setProductStock, getStock, getStats, exportData, importData]);
+
   return (
-    <AppDataContext.Provider value={{
-      customers, orders, payments, stockOvr, loading,
-      ROUTES,
-      addCustomer, updateCustomer, deleteCustomer,
-      createOrder, deleteOrder,
-      addPayment,
-      setProductStock, getStock,
-      getStats,
-      exportData, importData,
-    }}>
+    <AppDataContext.Provider value={contextValue}>
       {children}
     </AppDataContext.Provider>
   );

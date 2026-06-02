@@ -1,40 +1,67 @@
-/* Dawood Trader — Service Worker v2 */
-const CACHE_NAME = 'dt-cache-v2';
-const SHELL = ['/', '/index.html', '/favicon.ico', '/manifest.json'];
+/* Dawood Trader — Service Worker v3
+   Stale-while-revalidate for JS/CSS, cache-first for static assets
+*/
+const CACHE_VER  = 'dt-v3';
+const SHELL      = ['/', '/index.html', '/favicon.ico', '/manifest.json'];
 
+/* ── Install ── */
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE_NAME)
+    caches.open(CACHE_VER)
       .then(c => c.addAll(SHELL).catch(() => {}))
       .then(() => self.skipWaiting())
   );
 });
 
+/* ── Activate ── */
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
       .then(keys => Promise.all(
-        keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
+        keys.filter(k => k !== CACHE_VER).map(k => caches.delete(k))
       ))
       .then(() => self.clients.claim())
   );
 });
 
+/* ── Fetch ── */
 self.addEventListener('fetch', e => {
-  const url = e.request.url;
-  if (e.request.method !== 'GET') return;
-  if (url.includes('firestore') || url.includes('googleapis') || url.includes('firebase')) return;
+  const { request } = e;
+  const url = request.url;
 
+  if (request.method !== 'GET') return;
+  // Skip Firebase / external APIs
+  if (url.includes('firestore.googleapis') || url.includes('firebase') ||
+      url.includes('googleapis.com') || url.includes('identitytoolkit')) return;
+
+  // JS/CSS bundles: stale-while-revalidate
+  if (url.includes('/_expo/static/') || url.includes('.js') || url.includes('.css')) {
+    e.respondWith(
+      caches.open(CACHE_VER).then(cache =>
+        cache.match(request).then(cached => {
+          const network = fetch(request).then(resp => {
+            if (resp.ok) cache.put(request, resp.clone());
+            return resp;
+          }).catch(() => cached);
+          return cached || network;
+        })
+      )
+    );
+    return;
+  }
+
+  // Everything else: network-first, fallback to cache, then index.html
   e.respondWith(
-    caches.match(e.request).then(cached => {
-      const network = fetch(e.request).then(resp => {
+    fetch(request)
+      .then(resp => {
         if (resp.ok && resp.type === 'basic') {
           const clone = resp.clone();
-          caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
+          caches.open(CACHE_VER).then(c => c.put(request, clone));
         }
         return resp;
-      }).catch(() => caches.match('/index.html'));
-      return cached || network;
-    })
+      })
+      .catch(() =>
+        caches.match(request).then(cached => cached || caches.match('/index.html'))
+      )
   );
 });

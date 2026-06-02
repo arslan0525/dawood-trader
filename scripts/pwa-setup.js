@@ -40,11 +40,23 @@ const pwaHead = `
 
 const swScript = `
   <script>
+    /* Capture beforeinstallprompt BEFORE React loads — critical for Android Chrome */
+    window.__pwaPrompt = null;
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      window.__pwaPrompt = e;
+      window.dispatchEvent(new CustomEvent('pwa-installable'));
+    });
+    window.addEventListener('appinstalled', function() {
+      window.__pwaPrompt = null;
+      window.dispatchEvent(new CustomEvent('pwa-installed'));
+    });
+    /* Register service worker */
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () {
-        navigator.serviceWorker.register('/sw.js')
+        navigator.serviceWorker.register('/sw.js', { scope: '/' })
           .then(function (r) { console.log('[SW] Registered', r.scope); })
-          .catch(function (e) { console.warn('[SW] Registration failed', e); });
+          .catch(function (e) { console.warn('[SW] Error:', e); });
       });
     }
   </script>`;
