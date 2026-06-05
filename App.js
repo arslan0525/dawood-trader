@@ -20,6 +20,14 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
       touch-action: pan-x !important;
       overscroll-behavior-x: contain;
     }
+    div[style*="overflow-y: auto"], div[style*="overflow-y: scroll"] {
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: contain;
+    }
+    * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+    img { image-rendering: auto; will-change: auto; }
+    [role="button"], button { cursor: pointer; }
+    input, textarea { font-family: inherit; }
   `;
   document.head.appendChild(css);
 }

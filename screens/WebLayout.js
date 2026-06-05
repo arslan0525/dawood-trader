@@ -156,6 +156,7 @@ export default function WebLayout({ navigation }) {
   const [activeTab,      setActiveTab]      = useState('Dashboard');
   const [tabProduct,     setTabProduct]     = useState(null);
   const [viewCustomerId, setViewCustomerId] = useState(null);
+  const [mountedTabs,    setMountedTabs]    = useState(() => new Set(['Dashboard']));
 
   // Navigation history stack for back button
   const [navHistory, setNavHistory]   = useState(['Dashboard']);
@@ -209,6 +210,7 @@ export default function WebLayout({ navigation }) {
   // Main nav tab press — resets history (no back button for main tabs)
   const goToTab = useCallback((key) => {
     setActiveTab(key);
+    setMountedTabs(prev => prev.has(key) ? prev : new Set([...prev, key]));
     const fresh = [key];
     historyRef.current = fresh;
     setNavHistory(fresh);
@@ -217,6 +219,7 @@ export default function WebLayout({ navigation }) {
   // Sub-screen navigation — pushes to history (shows back button)
   const switchTab = useCallback((key, data = null) => {
     setActiveTab(key);
+    setMountedTabs(prev => prev.has(key) ? prev : new Set([...prev, key]));
     if (key === 'AddProduct')      setTabProduct(data);
     if (key === 'CustomerProfile') setViewCustomerId(data);
     setNavHistory(prev => {
@@ -256,39 +259,24 @@ export default function WebLayout({ navigation }) {
     switchTab('AddProduct', product);
   }, [switchTab]);
 
-  // ── Content renderer ───────────────────────────────────────
-  const renderContent = useCallback(() => {
+  // Tabs kept alive after first visit — prevents remount on every switch
+  const CACHED_TABS = ['Dashboard','Home','Cart','Profile','Customers','NewOrder','OrderHistory','Recovery','Inventory'];
+
+  const cachedScreens = useMemo(() => {
     const base = { navigation, switchTab };
-    switch (activeTab) {
-      case 'Dashboard':       return <DashboardScreen       {...base} />;
-      case 'Home':            return <HomeScreen             {...base} />;
-      case 'Cart':            return <CartScreen             {...base} />;
-      case 'Profile':         return <ProfileScreen          {...base} />;
-      case 'Customers':       return <CustomersScreen        {...base} viewCustomer={viewCustomer} />;
-      case 'NewOrder':        return <OrdersScreen           {...base} viewCustomer={viewCustomer} />;
-      case 'OrderHistory':    return <OrderHistoryScreen     {...base} viewCustomer={viewCustomer} />;
-      case 'Recovery':        return <RecoveryScreen         {...base} viewCustomer={viewCustomer} />;
-      case 'Inventory':       return <AdminScreen            {...base} editProduct={editProduct} />;
-      case 'AddProduct':
-        return (
-          <AddItemScreen
-            key={tabProduct?.id || '__new__'}
-            navigation={navigation}
-            route={{ params: { product: tabProduct, tabMode: true } }}
-          />
-        );
-      case 'CustomerProfile':
-        return (
-          <CustomerProfileScreen
-            customerId={viewCustomerId}
-            switchTab={switchTab}
-            onClose={goBack}
-          />
-        );
-      default: return <DashboardScreen {...base} />;
-    }
-  }, [activeTab, navigation, switchTab, viewCustomer, editProduct,
-      tabProduct, viewCustomerId, goBack]);
+    return {
+      Dashboard:    <DashboardScreen    {...base} />,
+      Home:         <HomeScreen          {...base} />,
+      Cart:         <CartScreen          {...base} />,
+      Profile:      <ProfileScreen       {...base} />,
+      Customers:    <CustomersScreen     {...base} viewCustomer={viewCustomer} />,
+      NewOrder:     <OrdersScreen        {...base} viewCustomer={viewCustomer} />,
+      OrderHistory: <OrderHistoryScreen  {...base} viewCustomer={viewCustomer} />,
+      Recovery:     <RecoveryScreen      {...base} viewCustomer={viewCustomer} />,
+      Inventory:    <AdminScreen         {...base} editProduct={editProduct} />,
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigation]); // screens share stable callbacks; no need to rebuild on every switch
 
   /* ──────────────────────────────────────────────────────────
      MOBILE
@@ -374,7 +362,27 @@ export default function WebLayout({ navigation }) {
         {/* ── Back Bar (only for sub-screens: CustomerProfile, AddProduct) ── */}
         <MobileBackBar canGoBack={canGoBack} onBack={goBack} activeTab={activeTab} />
 
-        <View style={wl.mobileContent}>{renderContent()}</View>
+        <View style={wl.mobileContent}>
+          {CACHED_TABS.map(tab => mountedTabs.has(tab) && (
+            <View key={tab} style={{ flex: 1, display: activeTab === tab ? 'flex' : 'none' }}>
+              {cachedScreens[tab]}
+            </View>
+          ))}
+          {activeTab === 'AddProduct' && (
+            <View style={{ flex: 1 }}>
+              <AddItemScreen
+                key={tabProduct?.id || '__new__'}
+                navigation={navigation}
+                route={{ params: { product: tabProduct, tabMode: true } }}
+              />
+            </View>
+          )}
+          {activeTab === 'CustomerProfile' && (
+            <View style={{ flex: 1 }}>
+              <CustomerProfileScreen customerId={viewCustomerId} switchTab={switchTab} onClose={goBack} />
+            </View>
+          )}
+        </View>
       </View>
     );
   }
@@ -453,7 +461,27 @@ export default function WebLayout({ navigation }) {
           canGoBack={canGoBack}
           onBack={goBack}
         />
-        <View style={wl.content}>{renderContent()}</View>
+        <View style={wl.content}>
+          {CACHED_TABS.map(tab => mountedTabs.has(tab) && (
+            <View key={tab} style={{ flex: 1, display: activeTab === tab ? 'flex' : 'none' }}>
+              {cachedScreens[tab]}
+            </View>
+          ))}
+          {activeTab === 'AddProduct' && (
+            <View style={{ flex: 1 }}>
+              <AddItemScreen
+                key={tabProduct?.id || '__new__'}
+                navigation={navigation}
+                route={{ params: { product: tabProduct, tabMode: true } }}
+              />
+            </View>
+          )}
+          {activeTab === 'CustomerProfile' && (
+            <View style={{ flex: 1 }}>
+              <CustomerProfileScreen customerId={viewCustomerId} switchTab={switchTab} onClose={goBack} />
+            </View>
+          )}
+        </View>
       </View>
     </View>
   );
