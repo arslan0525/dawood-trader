@@ -1,11 +1,16 @@
-import React, { useMemo, memo } from 'react';
+import React, { useMemo, memo, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  Platform, useWindowDimensions,
+  Platform, useWindowDimensions, TextInput, Image, Alert, ActivityIndicator,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { useAppData } from '../context/AppDataContext';
 import { useLang }    from '../context/LanguageContext';
 import { C }          from '../constants/theme';
+
+const QCATS  = ['Cold Drinks', 'Masala', 'Pickles', 'Grocery', 'Snacks', 'Household', 'Pasta', 'Bricks'];
+const QUNITS = ['gram', 'liter', 'ml', 'kg', 'piece', 'dozen', 'box'];
 
 function fmtDate(ts) {
   if (!ts) return '—';
@@ -69,6 +74,189 @@ const OrderRow = memo(function OrderRow({ order, routes, onCollect }) {
     </View>
   );
 });
+
+/* ── Quick Add Product panel ── */
+function QuickAddProduct({ onDone }) {
+  const { addProduct } = useAppData();
+
+  const [name,     setName]     = useState('');
+  const [price,    setPrice]    = useState('');
+  const [qty,      setQty]      = useState('');
+  const [unit,     setUnit]     = useState('gram');
+  const [category, setCategory] = useState('Cold Drinks');
+  const [imageUri, setImageUri] = useState(null);
+  const [saving,   setSaving]   = useState(false);
+  const [done,     setDone]     = useState(false);
+
+  const pickPhoto = async () => {
+    if (Platform.OS !== 'web') {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') { Alert.alert('Permission chahiye', 'Gallery allow karein'); return; }
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: Platform.OS !== 'web',
+      aspect: [4, 3],
+      quality: 0.85,
+    });
+    if (result.canceled) return;
+    const compressed = await manipulateAsync(
+      result.assets[0].uri,
+      [{ resize: { width: 600 } }],
+      { compress: 0.7, format: SaveFormat.JPEG }
+    );
+    // Convert to base64 for persistence
+    if (Platform.OS === 'web') {
+      const blob = await (await fetch(compressed.uri)).blob();
+      const b64 = await new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.onloadend = () => res(reader.result);
+        reader.onerror   = rej;
+        reader.readAsDataURL(blob);
+      });
+      setImageUri(b64);
+    } else {
+      const FileSystem = require('expo-file-system');
+      const b64 = await FileSystem.readAsStringAsync(compressed.uri, { encoding: FileSystem.EncodingType.Base64 });
+      setImageUri(`data:image/jpeg;base64,${b64}`);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!name.trim())  { Alert.alert('Error', 'Product ka naam likhein'); return; }
+    if (!price.trim()) { Alert.alert('Error', 'Price likhein'); return; }
+    setSaving(true);
+    try {
+      const unitLabel = qty.trim() ? `${qty.trim()} ${unit}` : unit;
+      await addProduct({
+        name:     name.trim(),
+        price:    Number(price),
+        unit:     unitLabel,
+        category,
+        stock:    100,
+        inStock:  true,
+        sku:      '',
+        description: '',
+        imageUrl: imageUri || null,
+      });
+      setDone(true);
+      setTimeout(() => {
+        setName(''); setPrice(''); setQty(''); setUnit('gram');
+        setCategory('Cold Drinks'); setImageUri(null); setDone(false);
+      }, 1800);
+      onDone?.();
+    } catch (e) {
+      Alert.alert('Error', e.message || 'Save nahi ho saka');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (done) {
+    return (
+      <View style={ds.panel}>
+        <View style={{ alignItems: 'center', paddingVertical: 16 }}>
+          <Text style={{ fontSize: 40 }}>✅</Text>
+          <Text style={{ fontSize: 15, fontWeight: '800', color: '#15803d', marginTop: 8 }}>Product add ho gaya!</Text>
+          <Text style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>Product list mein show ho raha hai</Text>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={ds.panel}>
+      <Text style={ds.panelTitle}>➕ Naya Product Add Karo</Text>
+
+      {/* Photo + Name row */}
+      <View style={{ flexDirection: 'row', gap: 12, marginTop: 14 }}>
+        <TouchableOpacity style={ds.photoBtn} onPress={pickPhoto} activeOpacity={0.8}>
+          {imageUri
+            ? <Image source={{ uri: imageUri }} style={ds.photoImg} />
+            : (
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{ fontSize: 28 }}>📷</Text>
+                <Text style={ds.photoHint}>Photo</Text>
+              </View>
+            )
+          }
+        </TouchableOpacity>
+
+        <View style={{ flex: 1, gap: 8 }}>
+          <TextInput
+            style={ds.input}
+            placeholder="Product ka naam (e.g. OG Cola)"
+            value={name}
+            onChangeText={setName}
+            placeholderTextColor="#94a3b8"
+          />
+          <TextInput
+            style={ds.input}
+            placeholder="Price (Rs.)"
+            value={price}
+            onChangeText={setPrice}
+            keyboardType="numeric"
+            placeholderTextColor="#94a3b8"
+          />
+        </View>
+      </View>
+
+      {/* Quantity + Unit row */}
+      <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+        <TextInput
+          style={[ds.input, { flex: 1 }]}
+          placeholder="Quantity (50, 1, 250...)"
+          value={qty}
+          onChangeText={setQty}
+          keyboardType="numeric"
+          placeholderTextColor="#94a3b8"
+        />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 2 }}>
+          <View style={{ flexDirection: 'row', gap: 6, paddingVertical: 2 }}>
+            {QUNITS.map(u => (
+              <TouchableOpacity
+                key={u}
+                style={[ds.chip, unit === u && ds.chipActive]}
+                onPress={() => setUnit(u)}
+              >
+                <Text style={[ds.chipTxt, unit === u && ds.chipTxtActive]}>{u}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+      </View>
+
+      {/* Category chips */}
+      <Text style={ds.fieldLabel}>Category:</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <View style={{ flexDirection: 'row', gap: 6, paddingVertical: 4 }}>
+          {QCATS.map(c => (
+            <TouchableOpacity
+              key={c}
+              style={[ds.chip, category === c && ds.chipActive]}
+              onPress={() => setCategory(c)}
+            >
+              <Text style={[ds.chipTxt, category === c && ds.chipTxtActive]}>{c}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
+
+      {/* Save button */}
+      <TouchableOpacity
+        style={[ds.saveBtn, saving && { opacity: 0.7 }]}
+        onPress={handleSave}
+        disabled={saving}
+        activeOpacity={0.85}
+      >
+        {saving
+          ? <ActivityIndicator color="#fff" />
+          : <Text style={ds.saveBtnTxt}>✅  Product Save Karo</Text>
+        }
+      </TouchableOpacity>
+    </View>
+  );
+}
 
 export default function DashboardScreen({ switchTab }) {
   const { products, customers, orders, ROUTES, getStats } = useAppData();
@@ -139,7 +327,7 @@ export default function DashboardScreen({ switchTab }) {
       contentContainerStyle={[ds.body, { paddingHorizontal: isWide ? 24 : 14 }]}
       showsVerticalScrollIndicator={false}
     >
-      {/* Welcome bar (mobile only — desktop has TopBar) */}
+      {/* Welcome bar (mobile only) */}
       {!isWide && (
         <View style={ds.welcomeBar}>
           <Text style={ds.welcomeTitle}>📊 {t('dashboard')}</Text>
@@ -155,6 +343,9 @@ export default function DashboardScreen({ switchTab }) {
           </View>
         ))}
       </View>
+
+      {/* Quick Add Product */}
+      <QuickAddProduct onDone={() => switchTab?.('Home')} />
 
       {/* Two-column layout on wide screens */}
       <View style={[ds.bottomRow, isWide && ds.bottomRowWide]}>
@@ -254,7 +445,7 @@ const ds = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#f0f4fa' },
   body: { paddingTop: 20, paddingBottom: 40 },
 
-  welcomeBar: { marginBottom: 16 },
+  welcomeBar:  { marginBottom: 16 },
   welcomeTitle:{ fontSize: 22, fontWeight: '800', color: '#0f172a' },
   welcomeSub:  { fontSize: 12, color: '#64748b', marginTop: 2 },
 
@@ -283,6 +474,32 @@ const ds = StyleSheet.create({
   panelHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   panelTitle:  { fontSize: 14, fontWeight: '800', color: '#0f172a' },
   panelLink:   { fontSize: 12, color: C.primary, fontWeight: '700' },
+
+  /* Quick Add */
+  photoBtn: {
+    width: 84, height: 84, borderRadius: 14,
+    backgroundColor: '#f1f5f9', borderWidth: 2, borderColor: '#e2e8f0',
+    borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', overflow: 'hidden',
+  },
+  photoImg:  { width: 84, height: 84, borderRadius: 12 },
+  photoHint: { fontSize: 10, color: '#94a3b8', marginTop: 3, fontWeight: '600' },
+  input: {
+    backgroundColor: '#f8fafc', borderWidth: 1.5, borderColor: '#e2e8f0',
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10,
+    fontSize: 13, color: '#0f172a',
+  },
+  fieldLabel:  { fontSize: 11, fontWeight: '700', color: '#64748b', marginTop: 10, marginBottom: 4 },
+  chip:        { borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7, backgroundColor: '#f1f5f9', borderWidth: 1, borderColor: '#e2e8f0' },
+  chipActive:  { backgroundColor: C.primary, borderColor: C.primary },
+  chipTxt:     { fontSize: 11, fontWeight: '600', color: '#64748b' },
+  chipTxtActive:{ color: '#fff', fontWeight: '700' },
+  saveBtn: {
+    marginTop: 14, backgroundColor: C.primary, borderRadius: 12,
+    paddingVertical: 15, alignItems: 'center',
+    shadowColor: C.primary, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 8, elevation: 5,
+  },
+  saveBtnTxt: { color: '#fff', fontSize: 15, fontWeight: '800' },
 
   /* Orders */
   orderList: {},
