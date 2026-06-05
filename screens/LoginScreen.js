@@ -223,7 +223,7 @@ export default function LoginScreen({ navigation }) {
                 style={s.inputMargin}
                 rightElement={
                   <TouchableOpacity
-                    onPress={() => { setShowPass(v => !v); setTimeout(() => passwordRef.current?.focus(), 30); }}
+                    onPress={() => { setShowPass(v => !v); setTimeout(() => passwordRef.current?.focus(), 80); }}
                     style={{ padding: 6 }}
                     hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                   >

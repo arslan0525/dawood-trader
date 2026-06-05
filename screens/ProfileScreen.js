@@ -34,6 +34,7 @@ export default function ProfileScreen({ navigation, switchTab }) {
   const [savingPass, setSavingPass]         = useState(false);
   const [showCurrent, setShowCurrent]       = useState(false);
   const [showNew, setShowNew]               = useState(false);
+  const [showConfirm, setShowConfirm]       = useState(false);
 
   const initials = user?.displayName
     ? user.displayName.split(' ').filter(Boolean).map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -78,6 +79,7 @@ export default function ProfileScreen({ navigation, switchTab }) {
       await changePassword(currentPass, newPass);
       setShowPassModal(false);
       setCurrentPass(''); setNewPass(''); setConfirmPass('');
+      setShowCurrent(false); setShowNew(false);
       showToast('Password change ho gaya!', 'success');
     } catch (e) {
       showToast(e.message?.includes('wrong-password') ? 'Current password galat hai' : (e.message || 'Password change nahi ho saka'), 'error');
@@ -345,14 +347,20 @@ export default function ProfileScreen({ navigation, switchTab }) {
             </View>
 
             <Text style={s.inputLabel}>Confirm New Password</Text>
-            <TextInput
-              style={[s.modalInput, { marginBottom: 20 }]}
-              value={confirmPass}
-              onChangeText={setConfirmPass}
-              secureTextEntry
-              placeholder="Repeat new password"
-              placeholderTextColor="#94a3b8"
-            />
+            <View style={s.passRow}>
+              <TextInput
+                style={[s.modalInput, { marginBottom: 0 }]}
+                value={confirmPass}
+                onChangeText={setConfirmPass}
+                secureTextEntry={!showConfirm}
+                placeholder="Repeat new password"
+                placeholderTextColor="#94a3b8"
+              />
+              <TouchableOpacity onPress={() => setShowConfirm(v => !v)} style={s.eyeBtn}>
+                <Text>{showConfirm ? '🙈' : '👁️'}</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{ marginBottom: 20 }} />
 
             <View style={s.modalBtns}>
               <TouchableOpacity style={s.modalCancelBtn} onPress={() => setShowPassModal(false)}>
