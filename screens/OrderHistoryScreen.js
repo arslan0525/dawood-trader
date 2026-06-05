@@ -337,7 +337,7 @@ export default function OrderHistoryScreen({ switchTab, viewCustomer, navigation
       </View>
 
       {/* Filters */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} nestedScrollEnabled style={oh.filterBar} contentContainerStyle={oh.filterRow}>
+      <View style={[oh.filterBar, oh.filterRow, Platform.OS === 'web' && { overflow: 'scroll' }]}>
         {/* Status filter */}
         {['all', 'unpaid', 'partial', 'paid'].map(s => (
           <TouchableOpacity
@@ -367,7 +367,7 @@ export default function OrderHistoryScreen({ switchTab, viewCustomer, navigation
             <Text style={[oh.filterChipTxt, routeFilter === r.id && { color: r.textColor, fontWeight: '700' }]}>{r.name}</Text>
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </View>
 
       {/* Summary row */}
       {filtered.length > 0 && (
@@ -577,7 +577,7 @@ const oh = StyleSheet.create({
   searchInput: { flex: 1, paddingVertical: 9, fontSize: 14, color: C.text },
 
   filterBar: { backgroundColor: '#fff', flexShrink: 0, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
-  filterRow: { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 7, gap: 6, alignItems: 'center' },
+  filterRow: { flexDirection: 'row', flexWrap: 'nowrap', paddingHorizontal: 12, paddingVertical: 7, gap: 6, alignItems: 'center' },
   filterChip:      { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 14, borderWidth: 1.5, borderColor: '#e2e8f0', backgroundColor: '#fff' },
   filterChipActive:{ backgroundColor: '#eff6ff', borderColor: C.primary },
   filterChipTxt:   { fontSize: 11, fontWeight: '500', color: '#64748b' },

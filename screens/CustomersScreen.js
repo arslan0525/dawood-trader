@@ -277,13 +277,7 @@ export default function CustomersScreen({ switchTab, viewCustomer }) {
 
       {/* Route cards — scroll karo left/right */}
       <View style={cs.routeCardsWrap}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          nestedScrollEnabled
-          style={{ flexShrink: 0 }}
-          contentContainerStyle={cs.routeCardsRow}
-        >
+        <View style={[cs.routeCardsRow, Platform.OS === 'web' && { overflow: 'scroll' }]}>
           {/* All Routes card */}
           <TouchableOpacity
             style={[cs.routeCard, routeFilter === 0 && cs.routeCardActive]}
@@ -319,7 +313,7 @@ export default function CustomersScreen({ switchTab, viewCustomer }) {
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
+        </View>
       </View>
 
       {/* List */}
@@ -386,7 +380,7 @@ const cs = StyleSheet.create({
   searchInput: { flex: 1, paddingVertical: 9, fontSize: 14, color: C.text },
 
   routeCardsWrap: { backgroundColor: '#f0f4fa', borderBottomWidth: 1, borderBottomColor: '#e2e8f0', flexShrink: 0 },
-  routeCardsRow:  { flexDirection: 'row', paddingHorizontal: 10, paddingVertical: 10, gap: 8 },
+  routeCardsRow:  { flexDirection: 'row', flexWrap: 'nowrap', paddingHorizontal: 10, paddingVertical: 10, gap: 8 },
   routeCard: {
     backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10,
     borderWidth: 1.5, borderColor: '#e2e8f0', minWidth: 100, alignItems: 'center',
