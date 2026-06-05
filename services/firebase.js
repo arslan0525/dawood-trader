@@ -6,15 +6,15 @@ import { getStorage } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const firebaseConfig = {
-  apiKey:            process.env.EXPO_PUBLIC_FIREBASE_API_KEY            || "YOUR_API_KEY",
-  authDomain:        process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN        || "YOUR_AUTH_DOMAIN",
-  projectId:         process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID         || "YOUR_PROJECT_ID",
-  storageBucket:     process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET     || "YOUR_STORAGE_BUCKET",
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID|| "YOUR_MESSAGING_SENDER_ID",
-  appId:             process.env.EXPO_PUBLIC_FIREBASE_APP_ID             || "YOUR_APP_ID",
+  apiKey:            "AIzaSyA_8bIdyenFmloY_ZqMvvuNl3Fojd1QFOo",
+  authDomain:        "dawood-tarder.firebaseapp.com",
+  projectId:         "dawood-tarder",
+  storageBucket:     "dawood-tarder.firebasestorage.app",
+  messagingSenderId: "131910909480",
+  appId:             "1:131910909480:web:918f94f2f463cd27237f1d",
 };
 
-export const IS_DEMO = firebaseConfig.apiKey === "YOUR_API_KEY";
+export const IS_DEMO = false;
 
 const app = initializeApp(firebaseConfig);
 
