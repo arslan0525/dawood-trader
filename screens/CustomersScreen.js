@@ -383,7 +383,7 @@ const cs = StyleSheet.create({
   searchBox:   { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f4f7fc', borderRadius: 12, borderWidth: 1.5, borderColor: '#e2e8f0', paddingHorizontal: 12, gap: 8 },
   searchInput: { flex: 1, paddingVertical: 9, fontSize: 14, color: C.text },
 
-  routeCardsWrap: { backgroundColor: '#f0f4fa', borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
+  routeCardsWrap: { backgroundColor: '#f0f4fa', borderBottomWidth: 1, borderBottomColor: '#e2e8f0', flexShrink: 0 },
   routeCardsRow:  { flexDirection: 'row', paddingHorizontal: 10, paddingVertical: 10, gap: 8 },
   routeCard: {
     backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10,

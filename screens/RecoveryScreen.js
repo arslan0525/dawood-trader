@@ -234,7 +234,7 @@ export default function RecoveryScreen({ switchTab, viewCustomer, navigation }) 
             </TouchableOpacity>
           )}
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 0, maxHeight: 50 }} contentContainerStyle={{ flexDirection: 'row', gap: 6, paddingTop: 8 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} nestedScrollEnabled style={{ flexShrink: 0 }} contentContainerStyle={{ flexDirection: 'row', gap: 6, paddingHorizontal: 12, paddingVertical: 10, alignItems: 'center' }}>
           <TouchableOpacity
             style={[rc.routeChip, routeFilter === 0 && rc.routeChipActive]}
             onPress={() => setRouteFilter(0)}

@@ -211,7 +211,7 @@ function QuickAddProduct({ onDone }) {
           keyboardType="numeric"
           placeholderTextColor="#94a3b8"
         />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 2 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} nestedScrollEnabled style={{ flexShrink: 0, flex: 1 }}>
           <View style={{ flexDirection: 'row', gap: 6, paddingVertical: 2 }}>
             {QUNITS.map(u => (
               <TouchableOpacity
@@ -228,7 +228,7 @@ function QuickAddProduct({ onDone }) {
 
       {/* Category chips */}
       <Text style={ds.fieldLabel}>Category:</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} nestedScrollEnabled style={{ flexShrink: 0 }}>
         <View style={{ flexDirection: 'row', gap: 6, paddingVertical: 4 }}>
           {QCATS.map(c => (
             <TouchableOpacity

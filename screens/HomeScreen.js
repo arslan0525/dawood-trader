@@ -428,7 +428,7 @@ export default function HomeScreen({ navigation, switchTab }) {
 
         {/* Category chips */}
         <View style={[s.catWrap, (isDesktopWeb || isTabletWeb) && { paddingHorizontal: 20 }]}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.catRow}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} nestedScrollEnabled style={{ flexShrink: 0 }} contentContainerStyle={s.catRow}>
             {CATEGORIES.map(cat => {
               const active = selectedCat === cat;
               const cs     = cat !== 'All' ? CAT[cat] : null;

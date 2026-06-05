@@ -576,7 +576,7 @@ const oh = StyleSheet.create({
   searchBox:   { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f4f7fc', borderRadius: 12, borderWidth: 1.5, borderColor: '#e2e8f0', paddingHorizontal: 12, gap: 8 },
   searchInput: { flex: 1, paddingVertical: 9, fontSize: 14, color: C.text },
 
-  filterBar: { backgroundColor: '#fff', maxHeight: 50, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
+  filterBar: { backgroundColor: '#fff', flexShrink: 0, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
   filterRow: { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 7, gap: 6, alignItems: 'center' },
   filterChip:      { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 14, borderWidth: 1.5, borderColor: '#e2e8f0', backgroundColor: '#fff' },
   filterChipActive:{ backgroundColor: '#eff6ff', borderColor: C.primary },
