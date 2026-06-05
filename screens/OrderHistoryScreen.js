@@ -257,7 +257,7 @@ export default function OrderHistoryScreen({ switchTab, viewCustomer, navigation
 
   const openEdit = useCallback((order) => {
     setEditOrder(order);
-    setEditItems(order.items?.map(i => ({ ...i, rate: i.rate ?? i.lineTotal / i.quantity })) || []);
+    setEditItems(order.items?.map(i => ({ ...i, rate: i.rate ?? (i.quantity > 0 ? Math.round(i.lineTotal / i.quantity) : 0) })) || []);
     setEditNote(order.note || '');
     setEditPaid(String(order.paidAmount || 0));
     setShowEdit(true);
@@ -265,7 +265,11 @@ export default function OrderHistoryScreen({ switchTab, viewCustomer, navigation
   }, []);
 
   const editGrandTotal = useMemo(() =>
-    editItems.reduce((s, i) => s + (Number(i.quantity) * Number(i.rate || i.lineTotal / i.quantity || 0)), 0),
+    editItems.reduce((s, i) => {
+      const qty  = Number(i.quantity) || 0;
+      const rate = Number(i.rate) || (qty > 0 ? Math.round(i.lineTotal / qty) : 0);
+      return s + qty * rate;
+    }, 0),
     [editItems]
   );
 
@@ -472,7 +476,7 @@ export default function OrderHistoryScreen({ switchTab, viewCustomer, navigation
                       <Text style={oh.editFieldLabel}>Rate (Rs.)</Text>
                       <TextInput
                         style={oh.editInput}
-                        value={String(item.rate ?? Math.round(item.lineTotal / item.quantity))}
+                        value={String(item.rate ?? (item.quantity > 0 ? Math.round(item.lineTotal / item.quantity) : 0))}
                         onChangeText={v => {
                           const updated = [...editItems];
                           updated[idx] = { ...updated[idx], rate: v };

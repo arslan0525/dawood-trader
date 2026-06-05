@@ -283,11 +283,11 @@ export default function RecoveryScreen({ switchTab, viewCustomer, navigation }) 
                 <View style={rc.progressBar}>
                   <View style={[
                     rc.progressFill,
-                    { width: `${Math.round((order.paidAmount / order.grandTotal) * 100)}%` }
+                    { width: `${order.grandTotal > 0 ? Math.round((order.paidAmount / order.grandTotal) * 100) : 0}%` }
                   ]} />
                 </View>
                 <Text style={rc.progressPct}>
-                  {Math.round((order.paidAmount / order.grandTotal) * 100)}% paid
+                  {order.grandTotal > 0 ? Math.round((order.paidAmount / order.grandTotal) * 100) : 0}% paid
                 </Text>
                 <TouchableOpacity style={rc.collectBtn} onPress={() => openPayModal(order)}>
                   <Text style={rc.collectBtnTxt}>+ Collect</Text>

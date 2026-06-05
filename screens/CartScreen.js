@@ -37,7 +37,7 @@ const CartItem = memo(function CartItem({ item, onUpdateQty, onRemove }) {
         </View>
       </View>
       <View style={styles.itemRight}>
-        <Text style={styles.itemTotal}>Rs. {(item.price * item.qty).toLocaleString()}</Text>
+        <Text style={styles.itemTotal}>Rs. {((item.price || 0) * (item.qty || 1)).toLocaleString()}</Text>
         <TouchableOpacity style={styles.removeBtn} onPress={() => onRemove(item.id)}>
           <Text style={{ fontSize: 13, color: C.danger, fontWeight: '700' }}>✕</Text>
         </TouchableOpacity>

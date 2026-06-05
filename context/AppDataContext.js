@@ -161,7 +161,7 @@ export function AppDataProvider({ children }) {
       items:           data.items || [],
       grandTotal:      data.grandTotal || 0,
       paidAmount:      data.paidAmount || 0,
-      remaining:       data.remaining  || data.grandTotal || 0,
+      remaining:       Math.max(0, (data.grandTotal || 0) - (data.paidAmount || 0)),
       status:          data.paidAmount >= data.grandTotal ? 'paid' : data.paidAmount > 0 ? 'partial' : 'unpaid',
       note:            data.note || '',
       createdAt:       Date.now(),

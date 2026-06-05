@@ -185,7 +185,7 @@ export default function ProductDetailScreen({ route, navigation }) {
                 </TouchableOpacity>
                 <View style={s.qtyTotal}>
                   <Text style={s.qtyTotalLabel}>Subtotal</Text>
-                  <Text style={s.qtyTotalValue}>Rs. {(currentPrice * qty).toLocaleString()}</Text>
+                  <Text style={s.qtyTotalValue}>Rs. {((currentPrice || 0) * qty).toLocaleString()}</Text>
                 </View>
               </View>
             </View>
@@ -212,7 +212,7 @@ export default function ProductDetailScreen({ route, navigation }) {
       <View style={s.footer}>
         <View style={s.footerLeft}>
           <Text style={s.footerLabel}>Total</Text>
-          <Text style={s.footerPrice}>Rs. {(currentPrice * qty).toLocaleString()}</Text>
+          <Text style={s.footerPrice}>Rs. {((currentPrice || 0) * qty).toLocaleString()}</Text>
         </View>
         <TouchableOpacity
           style={[s.addBtn, !isInStock && s.addBtnDisabled]}

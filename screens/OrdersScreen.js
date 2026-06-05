@@ -405,6 +405,7 @@ export default function OrdersScreen({ switchTab, navigation }) {
         remaining:       Math.max(0, grandTotal - paid),
         note,
       });
+      if (!order) { showToast('Order save nahi ho saka', 'error'); return; }
       setSavedOrder(order);
       setShowBill(true);
       showToast(t('orderCreated'), 'success');

@@ -147,9 +147,9 @@ const VariantCard = memo(function VariantCard({ item, onAdd, onPress, cardW, img
 /* ─────────────────────────────────────────────────────────── */
 const ProductGroup = memo(function ProductGroup({ group, navigation, onAdd, switchTab, cardW, imgH, isAdmin, onEdit, onDelete, onPriceEdit, onImageEdit }) {
   const cat = CAT[group.category] || CAT.default;
-  const prices = group.variants.map(v => v.price);
-  const lo = Math.min(...prices);
-  const hi = Math.max(...prices);
+  const prices = group.variants.map(v => v.price).filter(p => typeof p === 'number');
+  const lo = prices.length ? Math.min(...prices) : 0;
+  const hi = prices.length ? Math.max(...prices) : 0;
   const priceRange = lo === hi
     ? `Rs.${lo.toLocaleString()}`
     : `Rs.${lo.toLocaleString()} – Rs.${hi.toLocaleString()}`;
@@ -255,10 +255,26 @@ export default function HomeScreen({ navigation, switchTab }) {
         ? await ImagePicker.launchCameraAsync({ allowsEditing: Platform.OS !== 'web', aspect: [4,3], quality: 0.9 })
         : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: Platform.OS !== 'web', aspect: [4,3], quality: 0.9 });
       if (result.canceled) return;
-      const compressed = await manipulateAsync(result.assets[0].uri, [{ resize: { width: 900 } }], { compress: 0.75, format: SaveFormat.JPEG });
+      const compressed = await manipulateAsync(result.assets[0].uri, [{ resize: { width: 600 } }], { compress: 0.65, format: SaveFormat.JPEG });
       const uri = compressed.uri;
       if (IS_DEMO) {
-        updateProductDemo(item.id, { ...item, imageUrl: uri, imageUrls: [uri] });
+        // Convert to base64 so image persists across refreshes in localStorage
+        const base64 = await new Promise((resolve, reject) => {
+          if (Platform.OS === 'web') {
+            fetch(uri).then(r => r.blob()).then(blob => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            }).catch(reject);
+          } else {
+            const FileSystem = require('expo-file-system');
+            FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 })
+              .then(b64 => resolve(`data:image/jpeg;base64,${b64}`))
+              .catch(() => resolve(uri));
+          }
+        });
+        updateProductDemo(item.id, { ...item, imageUrl: base64, imageUrls: [base64] });
         showToast('Photo update ho gaya!', 'success');
         return;
       }
