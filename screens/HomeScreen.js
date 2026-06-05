@@ -5,8 +5,10 @@ import {
   Platform, useWindowDimensions, Alert,
 } from 'react-native';
 import { deleteDoc, doc, updateDoc } from 'firebase/firestore';
-import { ref, deleteObject } from 'firebase/storage';
+import { ref, deleteObject, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage, IS_DEMO } from '../services/firebase';
+import * as ImagePicker from 'expo-image-picker';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -26,7 +28,7 @@ function timeGreeting() {
 /* ─────────────────────────────────────────────────────────── */
 /*  Variant Card                                               */
 /* ─────────────────────────────────────────────────────────── */
-const VariantCard = memo(function VariantCard({ item, onAdd, onPress, cardW, imgH, isAdmin, onEdit, onDelete, onPriceEdit }) {
+const VariantCard = memo(function VariantCard({ item, onAdd, onPress, cardW, imgH, isAdmin, onEdit, onDelete, onPriceEdit, onImageEdit }) {
   const cat = CAT[item.category] || CAT.default;
   const inStock = item.inStock !== false;
   const [editingPrice, setEditingPrice] = useState(false);
@@ -85,6 +87,14 @@ const VariantCard = memo(function VariantCard({ item, onAdd, onPress, cardW, img
             />
           </View>
         )}
+        {/* Photo edit button — visible to all users */}
+        <TouchableOpacity
+          style={vs.imgEditBtn}
+          onPress={e => { e?.stopPropagation?.(); onImageEdit(item); }}
+          activeOpacity={0.8}
+        >
+          <Text style={vs.imgEditBtnTxt}>📷</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Info */}
@@ -133,7 +143,7 @@ const VariantCard = memo(function VariantCard({ item, onAdd, onPress, cardW, img
 /* ─────────────────────────────────────────────────────────── */
 /*  Product Group                                              */
 /* ─────────────────────────────────────────────────────────── */
-const ProductGroup = memo(function ProductGroup({ group, navigation, onAdd, switchTab, cardW, imgH, isAdmin, onEdit, onDelete, onPriceEdit }) {
+const ProductGroup = memo(function ProductGroup({ group, navigation, onAdd, switchTab, cardW, imgH, isAdmin, onEdit, onDelete, onPriceEdit, onImageEdit }) {
   const cat = CAT[group.category] || CAT.default;
   const prices = group.variants.map(v => v.price);
   const lo = Math.min(...prices);
@@ -172,6 +182,7 @@ const ProductGroup = memo(function ProductGroup({ group, navigation, onAdd, swit
             onEdit={onEdit}
             onDelete={onDelete}
             onPriceEdit={onPriceEdit}
+            onImageEdit={onImageEdit}
           />
         ))}
       </View>
@@ -228,6 +239,48 @@ export default function HomeScreen({ navigation, switchTab }) {
     if (item.inStock === false) return;
     addToCart(item);
   }, [addToCart]);
+
+  const handleImageEdit = useCallback(async (item) => {
+    const pick = async (useCamera) => {
+      if (useCamera) {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') { Alert.alert('Permission chahiye', 'Camera allow karein'); return; }
+      } else {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') { Alert.alert('Permission chahiye', 'Gallery allow karein'); return; }
+      }
+      const result = useCamera
+        ? await ImagePicker.launchCameraAsync({ allowsEditing: Platform.OS !== 'web', aspect: [4,3], quality: 0.9 })
+        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: Platform.OS !== 'web', aspect: [4,3], quality: 0.9 });
+      if (result.canceled) return;
+      const compressed = await manipulateAsync(result.assets[0].uri, [{ resize: { width: 900 } }], { compress: 0.75, format: SaveFormat.JPEG });
+      const uri = compressed.uri;
+      if (IS_DEMO) {
+        updateProductDemo(item.id, { ...item, imageUrl: uri, imageUrls: [uri] });
+        showToast('Photo update ho gaya!', 'success');
+        return;
+      }
+      try {
+        const blob = await (await fetch(uri)).blob();
+        const imagePath = `products/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+        const storageRef = ref(storage, imagePath);
+        await uploadBytes(storageRef, blob);
+        const url = await getDownloadURL(storageRef);
+        await updateDoc(doc(db, 'products', item.id), { imageUrl: url, imageUrls: [url], imagePath });
+        showToast('Photo update ho gaya!', 'success');
+      } catch { showToast('Photo save nahi ho saka', 'error'); }
+    };
+
+    if (Platform.OS === 'web') {
+      pick(false);
+    } else {
+      Alert.alert('Photo kahan se?', item.name, [
+        { text: '📷 Camera', onPress: () => pick(true) },
+        { text: '🖼️ Gallery', onPress: () => pick(false) },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+    }
+  }, [updateProductDemo, showToast]);
 
   const handlePriceEdit = useCallback(async (item, newPrice) => {
     if (IS_DEMO) {
@@ -446,7 +499,7 @@ export default function HomeScreen({ navigation, switchTab }) {
     );
   }
 
-  const groupProps = { navigation, onAdd: handleAdd, switchTab, cardW, imgH, isAdmin, onEdit: handleEdit, onDelete: handleDelete, onPriceEdit: handlePriceEdit };
+  const groupProps = { navigation, onAdd: handleAdd, switchTab, cardW, imgH, isAdmin, onEdit: handleEdit, onDelete: handleDelete, onPriceEdit: handlePriceEdit, onImageEdit: handleImageEdit };
 
   /* ── WEB ── */
   if (isWeb) {
@@ -653,7 +706,9 @@ const vs = StyleSheet.create({
     transform: [{ translateY: -2 }],
   },
   cardOos:  { opacity: 0.55 },
-  adminMenu: { position: 'absolute', top: 4, right: 4, zIndex: 10 },
+  adminMenu:    { position: 'absolute', top: 4, right: 4, zIndex: 10 },
+  imgEditBtn:   { position: 'absolute', bottom: 5, right: 5, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 14, width: 28, height: 28, justifyContent: 'center', alignItems: 'center', zIndex: 10 },
+  imgEditBtnTxt:{ fontSize: 13 },
   imgWrap:  { width: '100%', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
   img:      { width: '100%', height: '100%', position: 'absolute' },
   oosDim:   { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.38)', justifyContent: 'center', alignItems: 'center' },
