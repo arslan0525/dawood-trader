@@ -63,12 +63,22 @@ const VariantCard = memo(function VariantCard({ item, onAdd, onPress, cardW, img
       ]}
       onPress={onPress}
     >
-      {/* Image */}
-      <View style={[vs.imgWrap, { height: imgH, backgroundColor: cat.bg }]}>
+      {/* Image — tap to change photo */}
+      <TouchableOpacity
+        style={[vs.imgWrap, { height: imgH, backgroundColor: cat.bg }]}
+        onPress={e => { e?.stopPropagation?.(); onImageEdit(item); }}
+        activeOpacity={0.88}
+      >
         {item.imageUrl
           ? <Image source={{ uri: item.imageUrl }} style={vs.img} resizeMode="contain" />
           : <Text style={{ fontSize: emojiSize }}>{cat.icon}</Text>
         }
+        {/* 📷 Edit badge — always visible like ✏️ on price */}
+        <View style={vs.imgEditOverlay}>
+          <View style={vs.imgEditBadge}>
+            <Text style={vs.imgEditBadgeTxt}>📷 Edit</Text>
+          </View>
+        </View>
         {!inStock && (
           <View style={vs.oosDim}>
             <View style={vs.oosTag}><Text style={vs.oosTagTxt}>Out of Stock</Text></View>
@@ -87,15 +97,7 @@ const VariantCard = memo(function VariantCard({ item, onAdd, onPress, cardW, img
             />
           </View>
         )}
-        {/* Photo edit button — visible to all users */}
-        <TouchableOpacity
-          style={vs.imgEditBtn}
-          onPress={e => { e?.stopPropagation?.(); onImageEdit(item); }}
-          activeOpacity={0.8}
-        >
-          <Text style={vs.imgEditBtnTxt}>📷</Text>
-        </TouchableOpacity>
-      </View>
+      </TouchableOpacity>
 
       {/* Info */}
       <View style={{ padding: bodyPad, alignItems: 'center' }}>
@@ -706,9 +708,10 @@ const vs = StyleSheet.create({
     transform: [{ translateY: -2 }],
   },
   cardOos:  { opacity: 0.55 },
-  adminMenu:    { position: 'absolute', top: 4, right: 4, zIndex: 10 },
-  imgEditBtn:   { position: 'absolute', bottom: 5, right: 5, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 14, width: 28, height: 28, justifyContent: 'center', alignItems: 'center', zIndex: 10 },
-  imgEditBtnTxt:{ fontSize: 13 },
+  adminMenu:      { position: 'absolute', top: 4, right: 4, zIndex: 10 },
+  imgEditOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, alignItems: 'center', paddingBottom: 6, zIndex: 5 },
+  imgEditBadge:   { backgroundColor: 'rgba(0,0,0,0.52)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+  imgEditBadgeTxt:{ color: '#fff', fontSize: 10, fontWeight: '700' },
   imgWrap:  { width: '100%', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
   img:      { width: '100%', height: '100%', position: 'absolute' },
   oosDim:   { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.38)', justifyContent: 'center', alignItems: 'center' },
