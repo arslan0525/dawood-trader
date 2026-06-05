@@ -7,7 +7,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref, deleteObject } from 'firebase/storage';
 import { db, storage, IS_DEMO } from '../services/firebase';
 import { C, CAT, UNIT_TYPES } from '../constants/theme';
 import InputRow from '../components/InputRow';
@@ -194,8 +194,25 @@ export default function AddItemScreen({ route, navigation }) {
     setImages(prev => prev.map((img, i) => i === index ? { ...img, uri: compressed, isNew: true } : img));
   };
 
-  /* ── Upload single image ── */
+  /* ── Convert image to base64 (no Storage plan needed) ── */
   const uploadImage = async (uri) => {
+    if (Platform.OS === 'web') {
+      const blob = await (await fetch(uri)).blob();
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      return { url: base64, imagePath: null };
+    }
+    const FileSystem = require('expo-file-system');
+    const b64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+    return { url: `data:image/jpeg;base64,${b64}`, imagePath: null };
+  };
+
+  /* ── UNUSED (kept for reference) ── */
+  const _uploadImageToStorage = async (uri) => {
     const response = await fetch(uri);
     const blob     = await response.blob();
     const imagePath = `products/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;

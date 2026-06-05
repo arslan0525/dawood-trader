@@ -257,34 +257,29 @@ export default function HomeScreen({ navigation, switchTab }) {
       if (result.canceled) return;
       const compressed = await manipulateAsync(result.assets[0].uri, [{ resize: { width: 600 } }], { compress: 0.65, format: SaveFormat.JPEG });
       const uri = compressed.uri;
+      // Convert to base64 for both demo and Firebase (no Storage plan needed)
+      const base64 = await new Promise((resolve, reject) => {
+        if (Platform.OS === 'web') {
+          fetch(uri).then(r => r.blob()).then(blob => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          }).catch(reject);
+        } else {
+          const FileSystem = require('expo-file-system');
+          FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 })
+            .then(b64 => resolve(`data:image/jpeg;base64,${b64}`))
+            .catch(() => resolve(uri));
+        }
+      });
       if (IS_DEMO) {
-        // Convert to base64 so image persists across refreshes in localStorage
-        const base64 = await new Promise((resolve, reject) => {
-          if (Platform.OS === 'web') {
-            fetch(uri).then(r => r.blob()).then(blob => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result);
-              reader.onerror = reject;
-              reader.readAsDataURL(blob);
-            }).catch(reject);
-          } else {
-            const FileSystem = require('expo-file-system');
-            FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 })
-              .then(b64 => resolve(`data:image/jpeg;base64,${b64}`))
-              .catch(() => resolve(uri));
-          }
-        });
         updateProductDemo(item.id, { ...item, imageUrl: base64, imageUrls: [base64] });
         showToast('Photo update ho gaya!', 'success');
         return;
       }
       try {
-        const blob = await (await fetch(uri)).blob();
-        const imagePath = `products/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
-        const storageRef = ref(storage, imagePath);
-        await uploadBytes(storageRef, blob);
-        const url = await getDownloadURL(storageRef);
-        await updateDoc(doc(db, 'products', item.id), { imageUrl: url, imageUrls: [url], imagePath });
+        await updateDoc(doc(db, 'products', item.id), { imageUrl: base64, imageUrls: [base64] });
         showToast('Photo update ho gaya!', 'success');
       } catch { showToast('Photo save nahi ho saka', 'error'); }
     };
