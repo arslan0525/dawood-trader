@@ -275,36 +275,50 @@ export default function CustomersScreen({ switchTab, viewCustomer }) {
         </View>
       </View>
 
-      {/* Route filter chips — swipe left/right to see all */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={cs.chipScroll}
-        contentContainerStyle={cs.chipRow}
-      >
-        <TouchableOpacity
-          style={[cs.chip, routeFilter === 0 && cs.chipActive]}
-          onPress={() => setRouteFilter(0)}
+      {/* Route cards — scroll karo left/right */}
+      <View style={cs.routeCardsWrap}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={cs.routeCardsRow}
         >
-          <Text style={[cs.chipTxt, routeFilter === 0 && cs.chipTxtActive]}>
-            {t('allRoutes')} ({customers.length})
-          </Text>
-        </TouchableOpacity>
-        {ROUTES.map(r => {
-          const count = customers.filter(c => c.routeId === r.id).length;
-          return (
-            <TouchableOpacity
-              key={r.id}
-              style={[cs.chip, routeFilter === r.id && { backgroundColor: r.color, borderColor: r.textColor + '44' }]}
-              onPress={() => setRouteFilter(r.id)}
-            >
-              <Text style={[cs.chipTxt, routeFilter === r.id && { color: r.textColor, fontWeight: '700' }]}>
-                {r.name} ({count})
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+          {/* All Routes card */}
+          <TouchableOpacity
+            style={[cs.routeCard, routeFilter === 0 && cs.routeCardActive]}
+            onPress={() => setRouteFilter(0)}
+            activeOpacity={0.8}
+          >
+            <Text style={cs.routeCardIcon}>🗺️</Text>
+            <Text style={[cs.routeCardName, routeFilter === 0 && cs.routeCardNameActive]}>Sab Routes</Text>
+            <Text style={[cs.routeCardCount, routeFilter === 0 && cs.routeCardCountActive]}>{customers.length} customers</Text>
+          </TouchableOpacity>
+
+          {ROUTES.map(r => {
+            const count = customers.filter(c => c.routeId === r.id).length;
+            const outstanding = orders
+              .filter(o => o.routeId === r.id)
+              .reduce((s, o) => s + (o.remaining || 0), 0);
+            const isActive = routeFilter === r.id;
+            return (
+              <TouchableOpacity
+                key={r.id}
+                style={[cs.routeCard, isActive && { backgroundColor: r.color, borderColor: r.textColor + '55' }]}
+                onPress={() => setRouteFilter(r.id)}
+                activeOpacity={0.8}
+              >
+                <Text style={cs.routeCardIcon}>📍</Text>
+                <Text style={[cs.routeCardName, isActive && { color: r.textColor }]}>{r.name}</Text>
+                <Text style={[cs.routeCardCount, isActive && { color: r.textColor }]}>{count} customers</Text>
+                {outstanding > 0 && (
+                  <Text style={[cs.routeCardDebt, isActive && { color: r.textColor }]}>
+                    Rs.{outstanding >= 1000 ? (outstanding / 1000).toFixed(0) + 'K' : outstanding} due
+                  </Text>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
 
       {/* List */}
       <ScrollView style={{ flex: 1 }} contentContainerStyle={cs.list} showsVerticalScrollIndicator>
@@ -369,12 +383,20 @@ const cs = StyleSheet.create({
   searchBox:   { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f4f7fc', borderRadius: 12, borderWidth: 1.5, borderColor: '#e2e8f0', paddingHorizontal: 12, gap: 8 },
   searchInput: { flex: 1, paddingVertical: 9, fontSize: 14, color: C.text },
 
-  chipScroll: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e2e8f0', flexGrow: 0, flexShrink: 0, maxHeight: 50 },
-  chipRow:    { flexDirection: 'row', paddingHorizontal: 10, paddingVertical: 8, paddingBottom: 10, gap: 6, alignItems: 'center' },
-  chip:       { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16, borderWidth: 1.5, borderColor: '#e2e8f0', backgroundColor: '#fff' },
-  chipActive: { backgroundColor: '#eff6ff', borderColor: C.primary },
-  chipTxt:    { fontSize: 11, fontWeight: '500', color: '#64748b' },
-  chipTxtActive: { color: C.primary, fontWeight: '700' },
+  routeCardsWrap: { backgroundColor: '#f0f4fa', borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
+  routeCardsRow:  { flexDirection: 'row', paddingHorizontal: 10, paddingVertical: 10, gap: 8 },
+  routeCard: {
+    backgroundColor: '#fff', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10,
+    borderWidth: 1.5, borderColor: '#e2e8f0', minWidth: 100, alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2,
+  },
+  routeCardActive:      { backgroundColor: '#eff6ff', borderColor: C.primary },
+  routeCardIcon:        { fontSize: 18, marginBottom: 4 },
+  routeCardName:        { fontSize: 12, fontWeight: '700', color: '#0f172a', textAlign: 'center' },
+  routeCardNameActive:  { color: C.primary },
+  routeCardCount:       { fontSize: 10, color: '#64748b', marginTop: 2, fontWeight: '500' },
+  routeCardCountActive: { color: C.primary },
+  routeCardDebt:        { fontSize: 9, color: '#b91c1c', marginTop: 2, fontWeight: '700' },
 
   list: { padding: 14, paddingBottom: 80 },
 
