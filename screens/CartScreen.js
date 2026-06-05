@@ -38,8 +38,13 @@ const CartItem = memo(function CartItem({ item, onUpdateQty, onRemove }) {
       </View>
       <View style={styles.itemRight}>
         <Text style={styles.itemTotal}>Rs. {((item.price || 0) * (item.qty || 1)).toLocaleString()}</Text>
-        <TouchableOpacity style={styles.removeBtn} onPress={() => onRemove(item.id)}>
-          <Text style={{ fontSize: 13, color: C.danger, fontWeight: '700' }}>✕</Text>
+        <TouchableOpacity
+          style={styles.removeBtn}
+          onPress={() => onRemove(item.id)}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          activeOpacity={0.6}
+        >
+          <Text style={{ fontSize: 16, color: C.danger, fontWeight: '800' }}>✕</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -204,7 +209,7 @@ const styles = StyleSheet.create({
   qtyNum:    { fontSize: 15, fontWeight: '800', color: C.text, minWidth: 30, textAlign: 'center' },
   itemRight: { alignItems: 'flex-end', justifyContent: 'space-between', paddingLeft: 6, paddingVertical: 4, minWidth: 80 },
   itemTotal: { fontSize: 15, fontWeight: '800', color: C.primary },
-  removeBtn: { marginTop: 12, width: 28, height: 28, borderRadius: 7, backgroundColor: C.dangerBg, justifyContent: 'center', alignItems: 'center' },
+  removeBtn: { marginTop: 10, width: 36, height: 36, borderRadius: 9, backgroundColor: C.dangerBg, justifyContent: 'center', alignItems: 'center' },
 
   summary:      { backgroundColor: C.surface, borderRadius: 14, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3 },
   summaryTitle: { fontSize: 16, fontWeight: '800', color: C.text, marginBottom: 16 },

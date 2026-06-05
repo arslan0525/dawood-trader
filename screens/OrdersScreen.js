@@ -112,16 +112,29 @@ function CustomerPicker({ visible, customers, routes, onSelect, onClose }) {
           </View>
           <ScrollView style={{ flex: 1 }}>
             {filtered.map(c => {
-              const route = routes.find(r => r.id === c.routeId);
+              const route      = routes.find(r => r.id === c.routeId);
+              const isDisabled = c.status === 'disabled';
               return (
-                <TouchableOpacity key={c.id} style={or.pickerItem} onPress={() => { onSelect(c); onClose(); setQ(''); }}>
-                  <View style={or.pickerAvatar}>
+                <TouchableOpacity
+                  key={c.id}
+                  style={[or.pickerItem, isDisabled && { opacity: 0.5, backgroundColor: '#f8fafc' }]}
+                  onPress={() => {
+                    if (isDisabled) return; // blocked customers cannot be selected
+                    onSelect(c); onClose(); setQ('');
+                  }}
+                >
+                  <View style={[or.pickerAvatar, isDisabled && { backgroundColor: '#94a3b8' }]}>
                     <Text style={or.pickerAvatarTxt}>{c.name?.[0]?.toUpperCase() || '?'}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={or.pickerName}>{c.name}</Text>
                     <Text style={or.pickerSub}>{c.phone} · {route?.name || '—'}</Text>
                   </View>
+                  {isDisabled && (
+                    <View style={{ backgroundColor: '#fee2e2', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 }}>
+                      <Text style={{ fontSize: 10, color: '#b91c1c', fontWeight: '700' }}>🚫 Blocked</Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
               );
             })}
@@ -388,8 +401,9 @@ export default function OrdersScreen({ switchTab, navigation }) {
   }, [showToast]);
 
   const handleSave = async () => {
-    if (!selectedCustomer) { showToast('Please select a customer', 'error'); return; }
-    if (items.length === 0) { showToast('Please add at least one item', 'error'); return; }
+    if (!selectedCustomer) { showToast('Customer select karein', 'error'); return; }
+    if (selectedCustomer.status === 'disabled') { showToast(`"${selectedCustomer.name}" block hai — order nahi ho sakta`, 'error'); return; }
+    if (items.length === 0) { showToast('Koi item add karein', 'error'); return; }
     const paid = Number(paidAmount) || 0;
     setSaving(true);
     try {
