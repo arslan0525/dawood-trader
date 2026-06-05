@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import {
   collection, onSnapshot, addDoc, updateDoc, deleteDoc,
-  doc, query, orderBy, serverTimestamp,
+  doc, query, orderBy, serverTimestamp, writeBatch,
 } from 'firebase/firestore';
 import { db, IS_DEMO } from '../services/firebase';
 import {
@@ -74,9 +74,32 @@ export function AppDataProvider({ children }) {
     // Firebase real-time listeners
     const unsubs = [];
 
+    // Auto-seed products if Firestore is empty
+    let productSeeded = false;
+    const seedProducts = async () => {
+      try {
+        const batch = writeBatch(db);
+        DEMO_PRODUCTS.forEach(p => {
+          const { id: _id, ...rest } = p;
+          const docRef = doc(collection(db, 'products'));
+          batch.set(docRef, { ...rest, createdAt: serverTimestamp() });
+        });
+        await batch.commit();
+      } catch (e) {
+        console.error('Seeding products failed:', e);
+        setLoadError(true);
+        setLoading(false);
+      }
+    };
+
     const listenCol = (colName, setter, sortField = 'createdAt') => {
       const q = query(collection(db, colName), orderBy(sortField, 'desc'));
-      const unsub = onSnapshot(q, snap => {
+      const unsub = onSnapshot(q, async snap => {
+        if (colName === 'products' && snap.empty && !productSeeded) {
+          productSeeded = true;
+          await seedProducts();
+          return; // listener will fire again after seeding
+        }
         setter(snap.docs.map(d => ({ id: d.id, ...d.data() })));
         setLoading(false);
       }, (err) => {
@@ -277,14 +300,17 @@ export function AppDataProvider({ children }) {
     return stockOvr[productId] !== undefined ? stockOvr[productId] : defaultStock;
   }, [stockOvr]);
 
-  // ── PRODUCT CRUD (demo mode) ──────────────────────────────
-  const removeProduct = useCallback((id) => {
-    if (!IS_DEMO) return;
-    setProducts(prev => {
-      const updated = prev.filter(p => p.id !== id);
-      save(KEYS.products, updated);
-      return updated;
-    });
+  // ── PRODUCT CRUD ──────────────────────────────────────────
+  const removeProduct = useCallback(async (id) => {
+    if (IS_DEMO) {
+      setProducts(prev => {
+        const updated = prev.filter(p => p.id !== id);
+        save(KEYS.products, updated);
+        return updated;
+      });
+      return;
+    }
+    await deleteDoc(doc(db, 'products', id));
   }, []);
 
   const addProductDemo = useCallback((data) => {
@@ -302,6 +328,25 @@ export function AppDataProvider({ children }) {
     return product;
   }, []);
 
+  const addProduct = useCallback(async (data) => {
+    const product = {
+      name:        data.name?.trim() || '',
+      price:       Number(data.price) || 0,
+      unit:        data.unit?.trim() || '',
+      category:    data.category?.trim() || '',
+      stock:       Number(data.stock) || 0,
+      inStock:     data.inStock !== false,
+      sku:         data.sku?.trim() || '',
+      description: data.description?.trim() || '',
+      imageUrl:    data.imageUrl || null,
+    };
+    if (IS_DEMO) {
+      return addProductDemo(product);
+    }
+    const ref = await addDoc(collection(db, 'products'), { ...product, createdAt: serverTimestamp() });
+    return { ...product, id: ref.id };
+  }, [addProductDemo]);
+
   const updateProductDemo = useCallback((id, data) => {
     setProducts(prev => {
       const updated = prev.map(p => p.id === id ? { ...p, ...data } : p);
@@ -309,6 +354,14 @@ export function AppDataProvider({ children }) {
       return updated;
     });
   }, []);
+
+  const updateProduct = useCallback(async (id, data) => {
+    if (IS_DEMO) {
+      updateProductDemo(id, data);
+      return;
+    }
+    await updateDoc(doc(db, 'products', id), data);
+  }, [updateProductDemo]);
 
   // ── STATS ──────────────────────────────────────────────────
   const getStats = useCallback((allProducts = []) => {
@@ -360,13 +413,13 @@ export function AppDataProvider({ children }) {
     createOrder, deleteOrder, updateOrder,
     addPayment,
     setProductStock, getStock,
-    removeProduct, addProductDemo, updateProductDemo,
+    removeProduct, addProduct, addProductDemo, updateProduct, updateProductDemo,
     getStats,
     exportData, importData,
   }), [products, customers, orders, payments, stockOvr, loading, loadError, removeProduct,
     addCustomer, updateCustomer, deleteCustomer,
     createOrder, deleteOrder, updateOrder, addPayment,
-    addProductDemo, updateProductDemo,
+    addProduct, addProductDemo, updateProduct, updateProductDemo,
     setProductStock, getStock, getStats, exportData, importData]);
 
   return (
