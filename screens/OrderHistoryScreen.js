@@ -337,7 +337,7 @@ export default function OrderHistoryScreen({ switchTab, viewCustomer, navigation
       </View>
 
       {/* Filters */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={oh.filterBar} contentContainerStyle={oh.filterRow}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} nestedScrollEnabled style={oh.filterBar} contentContainerStyle={oh.filterRow}>
         {/* Status filter */}
         {['all', 'unpaid', 'partial', 'paid'].map(s => (
           <TouchableOpacity

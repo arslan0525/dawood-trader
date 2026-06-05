@@ -280,6 +280,8 @@ export default function CustomersScreen({ switchTab, viewCustomer }) {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
+          nestedScrollEnabled
+          style={{ flexShrink: 0 }}
           contentContainerStyle={cs.routeCardsRow}
         >
           {/* All Routes card */}
