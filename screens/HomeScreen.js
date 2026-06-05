@@ -17,6 +17,7 @@ import ThreeDotMenu from '../components/ThreeDotMenu';
 import { C, CAT } from '../constants/theme';
 
 const CATEGORIES = ['All', 'Cold Drinks', 'Masala', 'Pickles', 'Pasta', 'Grocery', 'Snacks', 'Household', 'Bricks'];
+const CAT_ORDER  = ['Cold Drinks', 'Masala', 'Pickles', 'Pasta', 'Grocery', 'Snacks', 'Household', 'Bricks'];
 
 function timeGreeting() {
   const h = new Date().getHours();
@@ -356,6 +357,17 @@ export default function HomeScreen({ navigation, switchTab }) {
     if (sortBy === 'price_asc')  arr.sort((a, b) => a.variants[0].price - b.variants[0].price);
     if (sortBy === 'price_desc') arr.sort((a, b) => b.variants[b.variants.length - 1].price - a.variants[a.variants.length - 1].price);
     if (sortBy === 'name')       arr.sort((a, b) => a.name.localeCompare(b.name));
+    if (sortBy === 'default') {
+      arr.sort((a, b) => {
+        const ci = (CAT_ORDER.indexOf(a.category) + 1 || 99) - (CAT_ORDER.indexOf(b.category) + 1 || 99);
+        if (ci !== 0) return ci;
+        // OG brand pehle Cold Drinks mein
+        const aOG = a.name.startsWith('OG') ? 0 : 1;
+        const bOG = b.name.startsWith('OG') ? 0 : 1;
+        if (aOG !== bOG) return aOG - bOG;
+        return a.name.localeCompare(b.name);
+      });
+    }
     return arr;
   }, [products, search, selectedCat, sortBy]);
 
