@@ -15,6 +15,11 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
     ::-webkit-scrollbar-corner { background: #e2e8f0; }
     * { scrollbar-width: thin; scrollbar-color: #94a3b8 #e2e8f0; }
     [data-scroll], div[style*="overflow-y: scroll"] { overflow-y: scroll !important; }
+    div[style*="overflow-x: scroll"] {
+      -webkit-overflow-scrolling: touch !important;
+      touch-action: pan-x !important;
+      overscroll-behavior-x: contain;
+    }
   `;
   document.head.appendChild(css);
 }
