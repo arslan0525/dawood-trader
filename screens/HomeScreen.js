@@ -4,7 +4,7 @@ import {
   Image, ActivityIndicator, FlatList, Pressable, ScrollView,
   Platform, useWindowDimensions, Alert,
 } from 'react-native';
-import { deleteDoc, doc } from 'firebase/firestore';
+import { deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { db, storage, IS_DEMO } from '../services/firebase';
 import { useCart } from '../context/CartContext';
@@ -26,9 +26,19 @@ function timeGreeting() {
 /* ─────────────────────────────────────────────────────────── */
 /*  Variant Card                                               */
 /* ─────────────────────────────────────────────────────────── */
-const VariantCard = memo(function VariantCard({ item, onAdd, onPress, cardW, imgH, isAdmin, onEdit, onDelete }) {
+const VariantCard = memo(function VariantCard({ item, onAdd, onPress, cardW, imgH, isAdmin, onEdit, onDelete, onPriceEdit }) {
   const cat = CAT[item.category] || CAT.default;
   const inStock = item.inStock !== false;
+  const [editingPrice, setEditingPrice] = useState(false);
+  const [priceVal, setPriceVal]         = useState('');
+
+  const startEdit = () => { setPriceVal(String(item.price || '')); setEditingPrice(true); };
+  const cancelEdit = () => setEditingPrice(false);
+  const savePrice = () => {
+    const n = Number(priceVal);
+    if (n > 0) onPriceEdit(item, n);
+    setEditingPrice(false);
+  };
 
   const tier = cardW >= 220 ? 'lg' : cardW >= 140 ? 'md' : 'sm';
 
@@ -80,7 +90,33 @@ const VariantCard = memo(function VariantCard({ item, onAdd, onPress, cardW, img
       {/* Info */}
       <View style={{ padding: bodyPad, alignItems: 'center' }}>
         <Text style={[vs.unit, { fontSize }]} numberOfLines={2}>{item.unit || 'piece'}</Text>
-        <Text style={[vs.price, { fontSize: priceSize }]}>Rs.{item.price?.toLocaleString()}</Text>
+
+        {isAdmin && editingPrice ? (
+          <View style={vs.priceEditRow}>
+            <TextInput
+              style={[vs.priceEditInput, { fontSize: priceSize }]}
+              value={priceVal}
+              onChangeText={setPriceVal}
+              keyboardType="numeric"
+              autoFocus
+              selectTextOnFocus
+              onSubmitEditing={savePrice}
+            />
+            <TouchableOpacity onPress={savePrice} style={vs.priceSaveBtn}>
+              <Text style={vs.priceSaveTxt}>✓</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={cancelEdit} style={vs.priceCancelBtn}>
+              <Text style={vs.priceCancelTxt}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        ) : isAdmin ? (
+          <TouchableOpacity onPress={startEdit} style={vs.priceEditableRow}>
+            <Text style={[vs.price, { fontSize: priceSize }]}>Rs.{item.price?.toLocaleString()}</Text>
+            <Text style={vs.priceEditIcon}>✏️</Text>
+          </TouchableOpacity>
+        ) : (
+          <Text style={[vs.price, { fontSize: priceSize }]}>Rs.{item.price?.toLocaleString()}</Text>
+        )}
         <TouchableOpacity
           style={[vs.btn, !inStock && vs.btnOff, { paddingVertical: btnPadV }]}
           onPress={e => { e?.stopPropagation?.(); onAdd(); }}
@@ -99,7 +135,7 @@ const VariantCard = memo(function VariantCard({ item, onAdd, onPress, cardW, img
 /* ─────────────────────────────────────────────────────────── */
 /*  Product Group                                              */
 /* ─────────────────────────────────────────────────────────── */
-const ProductGroup = memo(function ProductGroup({ group, navigation, onAdd, switchTab, cardW, imgH, isAdmin, onEdit, onDelete }) {
+const ProductGroup = memo(function ProductGroup({ group, navigation, onAdd, switchTab, cardW, imgH, isAdmin, onEdit, onDelete, onPriceEdit }) {
   const cat = CAT[group.category] || CAT.default;
   const prices = group.variants.map(v => v.price);
   const lo = Math.min(...prices);
@@ -137,6 +173,7 @@ const ProductGroup = memo(function ProductGroup({ group, navigation, onAdd, swit
             isAdmin={isAdmin}
             onEdit={onEdit}
             onDelete={onDelete}
+            onPriceEdit={onPriceEdit}
           />
         ))}
       </View>
@@ -152,7 +189,7 @@ export default function HomeScreen({ navigation, switchTab }) {
   const [selectedCat, setSelectedCat] = useState('All');
   const [sortBy, setSortBy]           = useState('default');
 
-  const { products, loading, removeProduct } = useAppData();
+  const { products, loading, removeProduct, updateProductDemo } = useAppData();
   const { addToCart }     = useCart();
   const { user, isAdmin } = useAuth();
   const { showToast }     = useToast();
@@ -193,6 +230,18 @@ export default function HomeScreen({ navigation, switchTab }) {
     if (item.inStock === false) return;
     addToCart(item);
   }, [addToCart]);
+
+  const handlePriceEdit = useCallback(async (item, newPrice) => {
+    if (IS_DEMO) {
+      updateProductDemo(item.id, { ...item, price: newPrice });
+      showToast(`Price update: Rs.${newPrice.toLocaleString()}`, 'success');
+      return;
+    }
+    try {
+      await updateDoc(doc(db, 'products', item.id), { price: newPrice });
+      showToast(`Price update: Rs.${newPrice.toLocaleString()}`, 'success');
+    } catch { showToast('Price save nahi ho saka', 'error'); }
+  }, [updateProductDemo, showToast]);
 
   const handleEdit = useCallback((item) => {
     if (switchTab) switchTab('AddProduct', item);
@@ -399,7 +448,7 @@ export default function HomeScreen({ navigation, switchTab }) {
     );
   }
 
-  const groupProps = { navigation, onAdd: handleAdd, switchTab, cardW, imgH, isAdmin, onEdit: handleEdit, onDelete: handleDelete };
+  const groupProps = { navigation, onAdd: handleAdd, switchTab, cardW, imgH, isAdmin, onEdit: handleEdit, onDelete: handleDelete, onPriceEdit: handlePriceEdit };
 
   /* ── WEB ── */
   if (isWeb) {
@@ -615,6 +664,15 @@ const vs = StyleSheet.create({
 
   unit:     { fontWeight: '600', color: '#475569', textAlign: 'center', marginBottom: 4 },
   price:    { fontWeight: '800', color: C.primary, marginBottom: 8 },
+
+  priceEditableRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8 },
+  priceEditIcon:    { fontSize: 10 },
+  priceEditRow:     { flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 8, width: '100%' },
+  priceEditInput:   { flex: 1, fontWeight: '800', color: C.primary, borderBottomWidth: 1.5, borderColor: C.primary, paddingVertical: 2, paddingHorizontal: 3, minWidth: 40, textAlign: 'center' },
+  priceSaveBtn:     { backgroundColor: C.primary, borderRadius: 5, width: 22, height: 22, justifyContent: 'center', alignItems: 'center' },
+  priceSaveTxt:     { color: '#fff', fontSize: 11, fontWeight: '800' },
+  priceCancelBtn:   { backgroundColor: '#fee2e2', borderRadius: 5, width: 22, height: 22, justifyContent: 'center', alignItems: 'center' },
+  priceCancelTxt:   { color: '#dc2626', fontSize: 11, fontWeight: '800' },
 
   btn:      { backgroundColor: C.primary, borderRadius: 8, paddingHorizontal: 10, alignItems: 'center', width: '100%' },
   btnOff:   { backgroundColor: '#e2e8f0' },
