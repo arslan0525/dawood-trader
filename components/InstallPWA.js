@@ -63,10 +63,10 @@ export function InstallBanner() {
 
   useEffect(() => {
     if (!ready || installed || Platform.OS !== 'web') return;
-    try { if (localStorage.getItem('dt_banner_v2')) return; } catch {}
+    try { if (localStorage.getItem('dt_banner_v3')) return; } catch {}
 
     const t = setTimeout(() => {
-      try { localStorage.setItem('dt_banner_v2', '1'); } catch {}
+      try { localStorage.setItem('dt_banner_v3', '1'); } catch {}
       setVisible(true);
       Animated.spring(slideY, { toValue: 0, useNativeDriver: true, tension: 70, friction: 11 }).start();
     }, 1500);

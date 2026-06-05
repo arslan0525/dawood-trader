@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   TextInput, Modal, Platform, Alert, Linking, useWindowDimensions,
@@ -197,8 +197,8 @@ function BillDetailModal({ visible, order, routes, onClose, onAddPayment }) {
   );
 }
 
-export default function OrderHistoryScreen({ switchTab, viewCustomer }) {
-  const { orders, customers, ROUTES, deleteOrder } = useAppData();
+export default function OrderHistoryScreen({ switchTab, viewCustomer, navigation }) {
+  const { orders, customers, ROUTES, deleteOrder, updateOrder, products } = useAppData();
   const { t } = useLang();
   const { showToast } = useToast();
   const { width } = useWindowDimensions();
@@ -209,6 +209,12 @@ export default function OrderHistoryScreen({ switchTab, viewCustomer }) {
   const [customerFilter, setCustomerFilter] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showDetail, setShowDetail]       = useState(false);
+  const [showEdit, setShowEdit]           = useState(false);
+  const [editOrder, setEditOrder]         = useState(null);
+  const [editItems, setEditItems]         = useState([]);
+  const [editNote, setEditNote]           = useState('');
+  const [editPaid, setEditPaid]           = useState('');
+  const [savingEdit, setSavingEdit]       = useState(false);
 
   const filtered = useMemo(() => {
     let list = [...orders];
@@ -231,28 +237,72 @@ export default function OrderHistoryScreen({ switchTab, viewCustomer }) {
 
   const openDetail = (order) => { setSelectedOrder(order); setShowDetail(true); };
 
-  const handleDelete = (order) => {
+  const handleDelete = useCallback((order) => {
     const doDelete = async () => {
       try {
         await deleteOrder(order.id);
-        showToast('Order deleted', 'success');
+        showToast('Bill delete ho gaya', 'success');
         setShowDetail(false);
-      } catch { showToast('Could not delete', 'error'); }
+      } catch { showToast('Delete nahi ho saka', 'error'); }
     };
     if (Platform.OS === 'web') {
-      if (window.confirm(`Delete order ${order.id}?`)) doDelete();
+      if (window.confirm(`Bill ${order.id} permanently delete karein?`)) doDelete();
     } else {
-      Alert.alert('Delete Order?', `Delete bill for ${order.customerName}?`, [
+      Alert.alert('Bill Delete?', `${order.customerName} ka bill permanently delete ho jaega`, [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Delete', style: 'destructive', onPress: doDelete },
       ]);
     }
-  };
+  }, [deleteOrder, showToast]);
+
+  const openEdit = useCallback((order) => {
+    setEditOrder(order);
+    setEditItems(order.items?.map(i => ({ ...i, rate: i.rate ?? i.lineTotal / i.quantity })) || []);
+    setEditNote(order.note || '');
+    setEditPaid(String(order.paidAmount || 0));
+    setShowEdit(true);
+    setShowDetail(false);
+  }, []);
+
+  const editGrandTotal = useMemo(() =>
+    editItems.reduce((s, i) => s + (Number(i.quantity) * Number(i.rate || i.lineTotal / i.quantity || 0)), 0),
+    [editItems]
+  );
+
+  const handleSaveEdit = useCallback(async () => {
+    if (!editOrder) return;
+    setSavingEdit(true);
+    try {
+      const recalcItems = editItems.map(i => ({
+        ...i,
+        quantity: Number(i.quantity),
+        rate:     Number(i.rate),
+        lineTotal: Number(i.quantity) * Number(i.rate),
+      }));
+      const grandTotal = recalcItems.reduce((s, i) => s + i.lineTotal, 0);
+      const paidAmount = Number(editPaid) || 0;
+      await updateOrder(editOrder.id, {
+        ...editOrder,
+        items:       recalcItems,
+        grandTotal,
+        paidAmount,
+        note:        editNote,
+      });
+      showToast('Bill update ho gaya!', 'success');
+      setShowEdit(false);
+    } catch { showToast('Update nahi ho saka', 'error'); }
+    finally { setSavingEdit(false); }
+  }, [editOrder, editItems, editNote, editPaid, updateOrder, showToast]);
 
   return (
     <View style={oh.root}>
       {/* Header */}
       <View style={oh.header}>
+        {!switchTab && (
+          <TouchableOpacity style={oh.backBtn} onPress={() => navigation.goBack()}>
+            <Text style={oh.backText}>‹ Back</Text>
+          </TouchableOpacity>
+        )}
         <View style={{ flex: 1 }}>
           <Text style={oh.headerTitle}>📋 {t('orderHistory')}</Text>
           <Text style={oh.headerSub}>{filtered.length} orders</Text>
@@ -331,7 +381,7 @@ export default function OrderHistoryScreen({ switchTab, viewCustomer }) {
           <View style={oh.empty}>
             <Text style={{ fontSize: 52 }}>📋</Text>
             <Text style={oh.emptyTitle}>{search ? t('noData') : t('noOrders')}</Text>
-            <TouchableOpacity style={oh.emptyBtn} onPress={() => switchTab?.('NewOrder')}>
+            <TouchableOpacity style={oh.emptyBtn} onPress={() => switchTab ? switchTab('NewOrder') : navigation?.navigate('Orders')}>
               <Text style={oh.emptyBtnTxt}>+ {t('newOrder')}</Text>
             </TouchableOpacity>
           </View>
@@ -340,8 +390,8 @@ export default function OrderHistoryScreen({ switchTab, viewCustomer }) {
             <View style={oh.cardTop}>
               <View style={{ flex: 1 }}>
                 <TouchableOpacity onPress={() => viewCustomer?.(order.customerId)}>
-            <Text style={[oh.cardCustomer, viewCustomer && { color: C.primary, textDecorationLine: 'underline' }]} numberOfLines={1}>{order.customerName}</Text>
-          </TouchableOpacity>
+                  <Text style={[oh.cardCustomer, viewCustomer && { color: C.primary, textDecorationLine: 'underline' }]} numberOfLines={1}>{order.customerName}</Text>
+                </TouchableOpacity>
                 <Text style={oh.cardId}>{order.id} · {fmtDate(order.createdAt)}</Text>
                 <Text style={oh.cardRoute}>{ROUTES.find(r => r.id === order.routeId)?.name || '—'}</Text>
               </View>
@@ -359,6 +409,15 @@ export default function OrderHistoryScreen({ switchTab, viewCustomer }) {
             <Text style={oh.cardItems} numberOfLines={1}>
               {order.items?.map(i => i.productName).join(', ')}
             </Text>
+            {/* Edit / Delete actions */}
+            <View style={oh.cardActions}>
+              <TouchableOpacity style={oh.editBtn} onPress={(e) => { e?.stopPropagation?.(); openEdit(order); }}>
+                <Text style={oh.editBtnTxt}>✏️ Edit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={oh.deleteBtn} onPress={(e) => { e?.stopPropagation?.(); handleDelete(order); }}>
+                <Text style={oh.deleteBtnTxt}>🗑️ Delete</Text>
+              </TouchableOpacity>
+            </View>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -374,6 +433,123 @@ export default function OrderHistoryScreen({ switchTab, viewCustomer }) {
           if (updated) setSelectedOrder(updated);
         }}
       />
+
+      {/* ── Edit Bill Modal ── */}
+      <Modal visible={showEdit} transparent animationType="slide" onRequestClose={() => setShowEdit(false)}>
+        <View style={oh.editOverlay}>
+          <View style={oh.editCard}>
+            {/* Header */}
+            <View style={oh.editHeader}>
+              <Text style={oh.editTitle}>✏️ Edit Bill</Text>
+              <Text style={oh.editSub}>{editOrder?.customerName} · {editOrder?.id}</Text>
+              <TouchableOpacity style={oh.editCloseBtn} onPress={() => setShowEdit(false)}>
+                <Text style={{ fontSize: 18, color: '#94a3b8' }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={{ padding: 16 }} keyboardShouldPersistTaps="handled">
+              {/* Items */}
+              <Text style={oh.editSectionLabel}>ITEMS</Text>
+              {editItems.map((item, idx) => (
+                <View key={idx} style={oh.editItem}>
+                  <Text style={oh.editItemName} numberOfLines={1}>{item.productName}</Text>
+                  <View style={oh.editItemRow}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={oh.editFieldLabel}>Qty</Text>
+                      <TextInput
+                        style={oh.editInput}
+                        value={String(item.quantity)}
+                        onChangeText={v => {
+                          const updated = [...editItems];
+                          updated[idx] = { ...updated[idx], quantity: v };
+                          setEditItems(updated);
+                        }}
+                        keyboardType="numeric"
+                        selectTextOnFocus
+                      />
+                    </View>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={oh.editFieldLabel}>Rate (Rs.)</Text>
+                      <TextInput
+                        style={oh.editInput}
+                        value={String(item.rate ?? Math.round(item.lineTotal / item.quantity))}
+                        onChangeText={v => {
+                          const updated = [...editItems];
+                          updated[idx] = { ...updated[idx], rate: v };
+                          setEditItems(updated);
+                        }}
+                        keyboardType="numeric"
+                        selectTextOnFocus
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={oh.editFieldLabel}>Total</Text>
+                      <View style={oh.editTotalBox}>
+                        <Text style={oh.editTotalTxt}>
+                          Rs.{(Number(item.quantity) * Number(item.rate || item.lineTotal / item.quantity || 0)).toLocaleString()}
+                        </Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      style={oh.removeItemBtn}
+                      onPress={() => setEditItems(editItems.filter((_, i) => i !== idx))}
+                    >
+                      <Text style={{ color: '#dc2626', fontSize: 16 }}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+
+              {/* Grand Total */}
+              <View style={oh.editTotalRow}>
+                <Text style={oh.editTotalLabel}>Grand Total</Text>
+                <Text style={oh.editGrandTotal}>Rs.{editGrandTotal.toLocaleString()}</Text>
+              </View>
+
+              {/* Paid Amount */}
+              <Text style={[oh.editSectionLabel, { marginTop: 16 }]}>PAYMENT</Text>
+              <View style={oh.editInputGroup}>
+                <Text style={oh.editFieldLabel}>Amount Paid (Rs.)</Text>
+                <TextInput
+                  style={oh.editInput}
+                  value={editPaid}
+                  onChangeText={setEditPaid}
+                  keyboardType="numeric"
+                  placeholder="0"
+                  selectTextOnFocus
+                />
+              </View>
+              <View style={oh.editRemainingRow}>
+                <Text style={oh.editFieldLabel}>Remaining</Text>
+                <Text style={[oh.editGrandTotal, { color: editGrandTotal - Number(editPaid) > 0 ? '#dc2626' : '#15803d', fontSize: 16 }]}>
+                  Rs.{Math.max(0, editGrandTotal - Number(editPaid)).toLocaleString()}
+                </Text>
+              </View>
+
+              {/* Note */}
+              <Text style={[oh.editSectionLabel, { marginTop: 16 }]}>NOTE</Text>
+              <TextInput
+                style={[oh.editInput, { height: 70, textAlignVertical: 'top' }]}
+                value={editNote}
+                onChangeText={setEditNote}
+                placeholder="Note (optional)"
+                multiline
+              />
+            </ScrollView>
+
+            {/* Save Button */}
+            <View style={{ padding: 16, borderTopWidth: 1, borderTopColor: '#e2e8f0' }}>
+              <TouchableOpacity
+                style={[oh.saveEditBtn, savingEdit && { opacity: 0.6 }]}
+                onPress={handleSaveEdit}
+                disabled={savingEdit}
+              >
+                <Text style={oh.saveEditBtnTxt}>{savingEdit ? 'Saving...' : '✅ Save Changes'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -389,6 +565,8 @@ const oh = StyleSheet.create({
   },
   headerTitle: { color: '#fff', fontSize: 20, fontWeight: '800' },
   headerSub:   { color: 'rgba(255,255,255,0.6)', fontSize: 11, marginTop: 2 },
+  backBtn:     { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.15)', marginRight: 12 },
+  backText:    { color: '#fff', fontSize: 14, fontWeight: '600' },
 
   searchRow:   { backgroundColor: '#fff', paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
   searchBox:   { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f4f7fc', borderRadius: 12, borderWidth: 1.5, borderColor: '#e2e8f0', paddingHorizontal: 12, gap: 8 },
@@ -475,4 +653,35 @@ const oh = StyleSheet.create({
   waBtnTxt:    { color: '#fff', fontWeight: '700', fontSize: 14 },
   closeMainBtn:    { flex: 1, backgroundColor: '#f1f5f9', borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
   closeMainBtnTxt: { color: C.textMid, fontWeight: '700', fontSize: 14 },
+
+  /* Card Edit/Delete actions */
+  cardActions: { flexDirection: 'row', gap: 8, marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
+  editBtn:     { flex: 1, backgroundColor: '#eff6ff', borderRadius: 8, paddingVertical: 7, alignItems: 'center', borderWidth: 1, borderColor: '#bfdbfe' },
+  editBtnTxt:  { color: C.primary, fontSize: 12, fontWeight: '700' },
+  deleteBtn:   { flex: 1, backgroundColor: '#fff5f5', borderRadius: 8, paddingVertical: 7, alignItems: 'center', borderWidth: 1, borderColor: '#fecaca' },
+  deleteBtnTxt:{ color: '#dc2626', fontSize: 12, fontWeight: '700' },
+
+  /* Edit Bill Modal */
+  editOverlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
+  editCard:     { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '92%' },
+  editHeader:   { padding: 20, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  editTitle:    { fontSize: 18, fontWeight: '800', color: '#0f172a' },
+  editSub:      { fontSize: 12, color: '#64748b', marginTop: 2 },
+  editCloseBtn: { position: 'absolute', top: 16, right: 16, padding: 6 },
+  editSectionLabel: { fontSize: 10, fontWeight: '800', color: '#94a3b8', letterSpacing: 1, marginBottom: 8 },
+  editItem:     { backgroundColor: '#f8fafc', borderRadius: 10, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: '#e2e8f0' },
+  editItemName: { fontSize: 13, fontWeight: '700', color: '#0f172a', marginBottom: 8 },
+  editItemRow:  { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  editFieldLabel:{ fontSize: 10, color: '#64748b', fontWeight: '600', marginBottom: 4 },
+  editInput:    { backgroundColor: '#fff', borderRadius: 8, borderWidth: 1.5, borderColor: '#e2e8f0', paddingHorizontal: 10, paddingVertical: 8, fontSize: 14, color: '#0f172a' },
+  editInputGroup:{ marginBottom: 12 },
+  editTotalBox: { backgroundColor: '#eff6ff', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, borderWidth: 1, borderColor: '#bfdbfe' },
+  editTotalTxt: { fontSize: 13, fontWeight: '700', color: C.primary },
+  editTotalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8fafc', borderRadius: 10, padding: 14, marginTop: 4, borderWidth: 1, borderColor: '#e2e8f0' },
+  editTotalLabel:{ fontSize: 14, fontWeight: '700', color: '#0f172a' },
+  editGrandTotal:{ fontSize: 20, fontWeight: '800', color: C.primary },
+  editRemainingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
+  removeItemBtn:{ padding: 6, marginLeft: 4 },
+  saveEditBtn:  { backgroundColor: C.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
+  saveEditBtnTxt:{ color: '#fff', fontSize: 16, fontWeight: '800' },
 });

@@ -28,8 +28,10 @@ function saveAvatar(url) {
   try { if (typeof localStorage !== 'undefined') { url ? localStorage.setItem(AVATAR_KEY, url) : localStorage.removeItem(AVATAR_KEY); } } catch {}
 }
 
+const PROD_URL = 'https://dawood-trader-kappa.vercel.app';
+
 const MAGIC_LINK_SETTINGS = {
-  url: (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8081') + '/',
+  url: (typeof window !== 'undefined' ? window.location.origin : PROD_URL) + '/',
   handleCodeInApp: true,
 };
 

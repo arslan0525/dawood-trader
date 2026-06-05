@@ -11,6 +11,7 @@ import { DEMO_PRODUCTS } from '../services/demoData';
 
 // ── Storage keys (demo / localStorage) ─────────────────────
 const KEYS = {
+  products:  'dt_products_v1',
   customers: 'dt_customers_v2',
   orders:    'dt_orders_v2',
   payments:  'dt_payments_v2',
@@ -19,13 +20,13 @@ const KEYS = {
 
 // ── Routes (static 1-7) ─────────────────────────────────────
 export const ROUTES = [
-  { id: 1, name: 'Route 1', color: '#dbeafe', textColor: '#1d4ed8' },
-  { id: 2, name: 'Route 2', color: '#dcfce7', textColor: '#15803d' },
-  { id: 3, name: 'Route 3', color: '#fef3c7', textColor: '#92400e' },
-  { id: 4, name: 'Route 4', color: '#f3e8ff', textColor: '#7e22ce' },
-  { id: 5, name: 'Route 5', color: '#ffedd5', textColor: '#c2410c' },
-  { id: 6, name: 'Route 6', color: '#fee2e2', textColor: '#b91c1c' },
-  { id: 7, name: 'Route 7', color: '#e0f2fe', textColor: '#0369a1' },
+  { id: 1, name: 'Kot Chutta',  color: '#dbeafe', textColor: '#1d4ed8' },
+  { id: 2, name: 'Nawa City',   color: '#dcfce7', textColor: '#15803d' },
+  { id: 3, name: 'Shero',       color: '#fef3c7', textColor: '#92400e' },
+  { id: 4, name: 'Choti',       color: '#f3e8ff', textColor: '#7e22ce' },
+  { id: 5, name: 'Paiga',       color: '#ffedd5', textColor: '#c2410c' },
+  { id: 6, name: 'Jhok',        color: '#fee2e2', textColor: '#b91c1c' },
+  { id: 7, name: 'Khanpure',    color: '#e0f2fe', textColor: '#0369a1' },
 ];
 
 // ── localStorage helpers ────────────────────────────────────
@@ -50,15 +51,18 @@ function save(key, data) {
 const AppDataContext = createContext();
 
 export function AppDataProvider({ children }) {
+  const [products,  setProducts]  = useState([]);
   const [customers, setCustomers] = useState([]);
   const [orders,    setOrders]    = useState([]);
   const [payments,  setPayments]  = useState([]);
   const [stockOvr,  setStockOvr]  = useState({});   // { productId: qty }
   const [loading,   setLoading]   = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   // ── Initial load ───────────────────────────────────────────
   useEffect(() => {
     if (IS_DEMO) {
+      setProducts(load(KEYS.products, DEMO_PRODUCTS));
       setCustomers(load(KEYS.customers, DEMO_CUSTOMERS));
       setOrders(load(KEYS.orders,       DEMO_ORDERS));
       setPayments(load(KEYS.payments,   DEMO_PAYMENTS));
@@ -75,10 +79,15 @@ export function AppDataProvider({ children }) {
       const unsub = onSnapshot(q, snap => {
         setter(snap.docs.map(d => ({ id: d.id, ...d.data() })));
         setLoading(false);
-      }, () => setLoading(false));
+      }, (err) => {
+        console.error(`Firebase error loading ${colName}:`, err);
+        setLoadError(true);
+        setLoading(false);
+      });
       unsubs.push(unsub);
     };
 
+    listenCol('products',  setProducts);
     listenCol('customers', setCustomers);
     listenCol('orders',    setOrders);
     listenCol('payments',  setPayments);
@@ -89,12 +98,15 @@ export function AppDataProvider({ children }) {
 
   // ── CUSTOMER CRUD ──────────────────────────────────────────
   const addCustomer = useCallback(async (data) => {
+    const name = data.name?.trim() || '';
+    if (!name) throw new Error('Customer name is required');
     const customer = {
-      name: data.name?.trim() || '',
-      phone: data.phone?.trim() || '',
-      address: data.address?.trim() || '',
-      routeId: Number(data.routeId) || 1,
-      notes: data.notes?.trim() || '',
+      name,
+      phone:    data.phone?.trim() || '',
+      address:  data.address?.trim() || '',
+      routeId:  Number(data.routeId) || 1,
+      notes:    data.notes?.trim() || '',
+      status:   'active',
       createdAt: Date.now(),
     };
     if (IS_DEMO) {
@@ -110,11 +122,12 @@ export function AppDataProvider({ children }) {
 
   const updateCustomer = useCallback(async (id, data) => {
     const patch = {
-      name: data.name?.trim() || '',
-      phone: data.phone?.trim() || '',
+      name:    data.name?.trim() || '',
+      phone:   data.phone?.trim() || '',
       address: data.address?.trim() || '',
       routeId: Number(data.routeId) || 1,
-      notes: data.notes?.trim() || '',
+      notes:   data.notes?.trim() || '',
+      ...(data.status !== undefined ? { status: data.status } : {}),
     };
     if (IS_DEMO) {
       const updated = customers.map(c => c.id === id ? { ...c, ...patch } : c);
@@ -137,6 +150,8 @@ export function AppDataProvider({ children }) {
 
   // ── ORDER / BILL CRUD ──────────────────────────────────────
   const createOrder = useCallback(async (data) => {
+    if (!data.customerId) throw new Error('Customer is required');
+    if (!data.items || data.items.length === 0) throw new Error('Order must have at least one item');
     const order = {
       customerId:      data.customerId,
       customerName:    data.customerName,
@@ -182,9 +197,29 @@ export function AppDataProvider({ children }) {
       const updated = orders.filter(o => o.id !== id);
       setOrders(updated);
       save(KEYS.orders, updated);
+      // Also remove related payments
+      const updatedPayments = payments.filter(p => p.orderId !== id);
+      setPayments(updatedPayments);
+      save(KEYS.payments, updatedPayments);
       return;
     }
     await deleteDoc(doc(db, 'orders', id));
+  }, [orders, payments]);
+
+  const updateOrder = useCallback(async (id, patch) => {
+    const paidAmount = patch.paidAmount ?? 0;
+    const grandTotal = patch.grandTotal ?? 0;
+    const remaining  = Math.max(0, grandTotal - paidAmount);
+    const status     = remaining <= 0 ? 'paid' : paidAmount > 0 ? 'partial' : 'unpaid';
+    const updated    = { ...patch, remaining, status };
+
+    if (IS_DEMO) {
+      const updatedOrders = orders.map(o => o.id === id ? { ...o, ...updated } : o);
+      setOrders(updatedOrders);
+      save(KEYS.orders, updatedOrders);
+      return;
+    }
+    await updateDoc(doc(db, 'orders', id), updated);
   }, [orders]);
 
   // ── PAYMENT ────────────────────────────────────────────────
@@ -242,6 +277,39 @@ export function AppDataProvider({ children }) {
     return stockOvr[productId] !== undefined ? stockOvr[productId] : defaultStock;
   }, [stockOvr]);
 
+  // ── PRODUCT CRUD (demo mode) ──────────────────────────────
+  const removeProduct = useCallback((id) => {
+    if (!IS_DEMO) return;
+    setProducts(prev => {
+      const updated = prev.filter(p => p.id !== id);
+      save(KEYS.products, updated);
+      return updated;
+    });
+  }, []);
+
+  const addProductDemo = useCallback((data) => {
+    const product = {
+      ...data,
+      id:        'p_' + Date.now(),
+      createdAt:  Date.now(),
+      inStock:   data.inStock !== false,
+    };
+    setProducts(prev => {
+      const updated = [product, ...prev];
+      save(KEYS.products, updated);
+      return updated;
+    });
+    return product;
+  }, []);
+
+  const updateProductDemo = useCallback((id, data) => {
+    setProducts(prev => {
+      const updated = prev.map(p => p.id === id ? { ...p, ...data } : p);
+      save(KEYS.products, updated);
+      return updated;
+    });
+  }, []);
+
   // ── STATS ──────────────────────────────────────────────────
   const getStats = useCallback((allProducts = []) => {
     const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -286,17 +354,19 @@ export function AppDataProvider({ children }) {
   }, []);
 
   const contextValue = useMemo(() => ({
-    customers, orders, payments, stockOvr, loading,
+    products, customers, orders, payments, stockOvr, loading, loadError,
     ROUTES,
     addCustomer, updateCustomer, deleteCustomer,
-    createOrder, deleteOrder,
+    createOrder, deleteOrder, updateOrder,
     addPayment,
     setProductStock, getStock,
+    removeProduct, addProductDemo, updateProductDemo,
     getStats,
     exportData, importData,
-  }), [customers, orders, payments, stockOvr, loading,
+  }), [products, customers, orders, payments, stockOvr, loading, loadError, removeProduct,
     addCustomer, updateCustomer, deleteCustomer,
-    createOrder, deleteOrder, addPayment,
+    createOrder, deleteOrder, updateOrder, addPayment,
+    addProductDemo, updateProductDemo,
     setProductStock, getStock, getStats, exportData, importData]);
 
   return (

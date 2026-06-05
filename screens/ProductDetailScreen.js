@@ -1,17 +1,42 @@
 import React, { useState } from 'react';
 import {
   View, Text, Image, TouchableOpacity, StyleSheet,
-  ScrollView, Alert, Platform, FlatList, useWindowDimensions,
+  ScrollView, Alert, Platform, FlatList, useWindowDimensions, TextInput,
 } from 'react-native';
 import { useCart } from '../context/CartContext';
+import { useAppData } from '../context/AppDataContext';
+import { useToast } from '../context/ToastContext';
+import { updateDoc, doc } from 'firebase/firestore';
+import { db, IS_DEMO } from '../services/firebase';
 import { C, CAT } from '../constants/theme';
 
 export default function ProductDetailScreen({ route, navigation }) {
   const { product, switchTab } = route.params;
   const { addToCart } = useCart();
-  const [qty, setQty]           = useState(1);
+  const { updateProductDemo } = useAppData();
+  const { showToast } = useToast();
+  const [qty, setQty]             = useState(1);
   const [activeImg, setActiveImg] = useState(0);
+  const [currentPrice, setCurrentPrice] = useState(product.price);
+  const [editingPrice, setEditingPrice] = useState(false);
+  const [priceInput, setPriceInput]     = useState(String(product.price || ''));
   const { width } = useWindowDimensions();
+
+  const savePrice = async () => {
+    const newPrice = Number(priceInput);
+    if (!newPrice || newPrice <= 0) { showToast('Sahi price likhein', 'error'); return; }
+    setCurrentPrice(newPrice);
+    setEditingPrice(false);
+    if (IS_DEMO) {
+      updateProductDemo(product.id, { ...product, price: newPrice });
+      showToast(`Price update: Rs.${newPrice.toLocaleString()}`, 'success');
+      return;
+    }
+    try {
+      await updateDoc(doc(db, 'products', product.id), { price: newPrice });
+      showToast(`Price update: Rs.${newPrice.toLocaleString()}`, 'success');
+    } catch { showToast('Price save nahi ho saka', 'error'); }
+  };
 
   const cat       = CAT[product.category] || CAT.default;
   const isInStock = product.inStock !== false;
@@ -113,8 +138,38 @@ export default function ProductDetailScreen({ route, navigation }) {
             )}
           </View>
 
-          {/* Price */}
-          <Text style={s.price}>Rs. {product.price?.toLocaleString()}</Text>
+          {/* Price — tap to edit */}
+          {editingPrice ? (
+            <View style={s.priceEditRow}>
+              <Text style={s.priceRsLabel}>Rs.</Text>
+              <TextInput
+                style={s.priceEditInput}
+                value={priceInput}
+                onChangeText={setPriceInput}
+                keyboardType="numeric"
+                autoFocus
+                selectTextOnFocus
+                onSubmitEditing={savePrice}
+              />
+              <TouchableOpacity style={s.priceSaveBtn} onPress={savePrice}>
+                <Text style={s.priceSaveTxt}>✓ Save</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={s.priceCancelBtn} onPress={() => { setEditingPrice(false); setPriceInput(String(currentPrice)); }}>
+                <Text style={s.priceCancelTxt}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={s.priceTapRow}
+              onPress={() => { setEditingPrice(true); setPriceInput(String(currentPrice)); }}
+              activeOpacity={0.7}
+            >
+              <Text style={s.price}>Rs. {currentPrice?.toLocaleString()}</Text>
+              <View style={s.priceEditHint}>
+                <Text style={s.priceEditHintTxt}>✏️ Edit</Text>
+              </View>
+            </TouchableOpacity>
+          )}
 
           {/* Quantity selector */}
           {isInStock && (
@@ -130,7 +185,7 @@ export default function ProductDetailScreen({ route, navigation }) {
                 </TouchableOpacity>
                 <View style={s.qtyTotal}>
                   <Text style={s.qtyTotalLabel}>Subtotal</Text>
-                  <Text style={s.qtyTotalValue}>Rs. {(product.price * qty).toLocaleString()}</Text>
+                  <Text style={s.qtyTotalValue}>Rs. {(currentPrice * qty).toLocaleString()}</Text>
                 </View>
               </View>
             </View>
@@ -157,7 +212,7 @@ export default function ProductDetailScreen({ route, navigation }) {
       <View style={s.footer}>
         <View style={s.footerLeft}>
           <Text style={s.footerLabel}>Total</Text>
-          <Text style={s.footerPrice}>Rs. {(product.price * qty).toLocaleString()}</Text>
+          <Text style={s.footerPrice}>Rs. {(currentPrice * qty).toLocaleString()}</Text>
         </View>
         <TouchableOpacity
           style={[s.addBtn, !isInStock && s.addBtnDisabled]}
@@ -220,7 +275,19 @@ const s = StyleSheet.create({
   metaChip:    { backgroundColor: C.bg, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6, borderWidth: 1, borderColor: C.border, marginRight: 8, marginBottom: 6 },
   metaChipTxt: { fontSize: 12, color: C.textMid, fontWeight: '600' },
 
-  price: { fontSize: 34, fontWeight: '800', color: C.primary, marginBottom: 20 },
+  price: { fontSize: 34, fontWeight: '800', color: C.primary },
+
+  priceTapRow:     { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 },
+  priceEditHint:   { backgroundColor: C.primaryLight, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  priceEditHintTxt:{ fontSize: 12, fontWeight: '700', color: C.primary },
+
+  priceEditRow:    { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20 },
+  priceRsLabel:    { fontSize: 22, fontWeight: '800', color: C.primary },
+  priceEditInput:  { flex: 1, fontSize: 28, fontWeight: '800', color: C.primary, borderBottomWidth: 2, borderColor: C.primary, paddingVertical: 4, paddingHorizontal: 6, minWidth: 80 },
+  priceSaveBtn:    { backgroundColor: C.primary, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 },
+  priceSaveTxt:    { color: '#fff', fontWeight: '800', fontSize: 14 },
+  priceCancelBtn:  { backgroundColor: '#fee2e2', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
+  priceCancelTxt:  { color: '#dc2626', fontWeight: '800', fontSize: 14 },
 
   /* Quantity card */
   qtyCard:       { backgroundColor: C.bg, borderRadius: 14, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: C.border },

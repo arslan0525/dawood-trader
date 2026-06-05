@@ -1,7 +1,7 @@
-/* Dawood Trader — Service Worker v3
-   Stale-while-revalidate for JS/CSS, cache-first for static assets
+/* Dawood Trader — Service Worker v5
+   Fixed: .js substring was matching manifest.json — now uses exact extension match
 */
-const CACHE_VER  = 'dt-v3';
+const CACHE_VER  = 'dt-v7';
 const SHELL      = ['/', '/index.html', '/favicon.ico', '/manifest.json'];
 
 /* ── Install ── */
@@ -13,7 +13,7 @@ self.addEventListener('install', e => {
   );
 });
 
-/* ── Activate ── */
+/* ── Activate: delete ALL old caches ── */
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
@@ -30,12 +30,22 @@ self.addEventListener('fetch', e => {
   const url = request.url;
 
   if (request.method !== 'GET') return;
-  // Skip Firebase / external APIs
+
+  // Skip Firebase / external APIs — never cache these
   if (url.includes('firestore.googleapis') || url.includes('firebase') ||
-      url.includes('googleapis.com') || url.includes('identitytoolkit')) return;
+      url.includes('googleapis.com')       || url.includes('identitytoolkit') ||
+      url.includes('accounts.google'))  return;
+
+  // Skip manifest.json — always fetch fresh so install prompt works correctly
+  if (url.endsWith('/manifest.json') || url.includes('/manifest.json?')) return;
 
   // JS/CSS bundles: stale-while-revalidate
-  if (url.includes('/_expo/static/') || url.includes('.js') || url.includes('.css')) {
+  // FIX: use endsWith / regex — NOT includes('.js') which matches .json too
+  const isBundle = url.includes('/_expo/static/') ||
+                   /\.js(\?.*)?$/.test(url)        ||
+                   /\.css(\?.*)?$/.test(url);
+
+  if (isBundle) {
     e.respondWith(
       caches.open(CACHE_VER).then(cache =>
         cache.match(request).then(cached => {
@@ -50,7 +60,7 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Everything else: network-first, fallback to cache, then index.html
+  // Everything else: network-first, cache fallback, then index.html
   e.respondWith(
     fetch(request)
       .then(resp => {

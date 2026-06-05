@@ -7,8 +7,6 @@ import {
 import { useAppData } from '../context/AppDataContext';
 import { useLang } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
-import { DEMO_PRODUCTS } from '../services/demoData';
-import { IS_DEMO } from '../services/firebase';
 import { C } from '../constants/theme';
 
 // ── Order Memory: previous orders for a customer ──────────────
@@ -307,14 +305,12 @@ function BillModal({ visible, order, onClose, onNewOrder }) {
 }
 
 // ── Main OrdersScreen ─────────────────────────────────────────
-export default function OrdersScreen({ switchTab }) {
-  const { customers, orders, ROUTES, createOrder, getStock } = useAppData();
+export default function OrdersScreen({ switchTab, navigation }) {
+  const { products, customers, orders, ROUTES, createOrder, getStock } = useAppData();
   const { t } = useLang();
   const { showToast } = useToast();
   const { width } = useWindowDimensions();
   const isWide = width >= 768;
-
-  const allProducts = IS_DEMO ? DEMO_PRODUCTS : [];
 
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [items, setItems] = useState([]);
@@ -347,7 +343,7 @@ export default function OrdersScreen({ switchTab }) {
       }
       return [...prev, {
         productId:   product.id,
-        productName: `${product.name} ${product.unit}`,
+        productName: product.unit ? `${product.name} ${product.unit}` : product.name,
         unit:        product.unit,
         quantity:    1,
         rate:        product.price,
@@ -431,6 +427,11 @@ export default function OrdersScreen({ switchTab }) {
 
         {/* Header */}
         <View style={or.header}>
+          {!switchTab && (
+            <TouchableOpacity style={or.backBtn} onPress={() => navigation.goBack()}>
+              <Text style={or.backText}>‹ Back</Text>
+            </TouchableOpacity>
+          )}
           <View style={{ flex: 1 }}>
             <Text style={or.headerTitle}>📝 {t('newOrder')}</Text>
             <Text style={or.headerSub}>Create bill for customer</Text>
@@ -630,7 +631,7 @@ export default function OrdersScreen({ switchTab }) {
         />
         <ProductPicker
           visible={showProductPicker}
-          products={allProducts}
+          products={products}
           onSelect={addItem}
           onClose={() => setShowProductPicker(false)}
         />
@@ -658,6 +659,8 @@ const or = StyleSheet.create({
   },
   headerTitle: { color: '#fff', fontSize: 20, fontWeight: '800' },
   headerSub:   { color: 'rgba(255,255,255,0.65)', fontSize: 11, marginTop: 2 },
+  backBtn:     { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.15)', marginRight: 12 },
+  backText:    { color: '#fff', fontSize: 14, fontWeight: '600' },
   resetBtn:    { backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7 },
   resetBtnTxt: { color: '#fff', fontWeight: '700', fontSize: 12 },
 

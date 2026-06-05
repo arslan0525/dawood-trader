@@ -44,7 +44,17 @@ const pwaHead = `
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Dawood Trader" />
-  <link rel="apple-touch-icon" href="/assets/icon.png" />`;
+  <link rel="apple-touch-icon" href="/icon-192.png" />
+  <style id="pwa-scroll-fix">
+    :root { --vh: 1vh; }
+    * { -webkit-overflow-scrolling: touch; }
+    body { overscroll-behavior: none; }
+    div[style*="overflow-y: scroll"], div[style*="overflow-y:scroll"],
+    div[style*="overflow: scroll"], div[style*="overflow:scroll"] {
+      touch-action: pan-y !important;
+      overscroll-behavior: contain;
+    }
+  </style>`;
 
 const swScript = `
   <script>
@@ -59,6 +69,16 @@ const swScript = `
       window.__pwaPrompt = null;
       window.dispatchEvent(new CustomEvent('pwa-installed'));
     });
+    /* PWA viewport height fix — 100vh is wrong on Android PWA standalone mode.
+       Set --vh CSS variable to actual window.innerHeight so scroll containers
+       get the correct bounded height on every device. */
+    function fixVh() {
+      var vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', vh + 'px');
+    }
+    fixVh();
+    window.addEventListener('resize', fixVh);
+    window.addEventListener('orientationchange', function() { setTimeout(fixVh, 150); });
     /* Register service worker */
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () {
@@ -79,18 +99,62 @@ if (!html.includes('serviceWorker')) {
   console.log('✅ Injected service worker registration');
 }
 
-// SEO meta tags
+// SEO + canonical + og:url meta tags
 if (!html.includes('og:title')) {
+  const APP_URL = 'https://dawood-trader-kappa.vercel.app';
   const seo = `
   <meta name="description" content="Dawood Trader — Pakistan's professional distribution, inventory, billing and customer management system." />
-  <meta property="og:title" content="Dawood Trader — Distribution Management System" />
+  <link rel="canonical" href="${APP_URL}/" />
+  <meta property="og:type"        content="website" />
+  <meta property="og:url"         content="${APP_URL}/" />
+  <meta property="og:title"       content="Dawood Trader — Distribution Management System" />
   <meta property="og:description" content="Complete distribution, inventory, billing and customer management for Pakistan businesses." />
-  <meta property="og:type" content="website" />
-  <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="Dawood Trader" />`;
+  <meta property="og:image"       content="${APP_URL}/icon-512.png" />
+  <meta name="twitter:card"        content="summary_large_image" />
+  <meta name="twitter:url"         content="${APP_URL}/" />
+  <meta name="twitter:title"       content="Dawood Trader" />
+  <meta name="twitter:image"       content="${APP_URL}/icon-512.png" />`;
   html = html.replace('</head>', seo + '\n</head>');
-  console.log('✅ Injected SEO meta tags');
+  console.log('✅ Injected SEO + canonical + og:url tags');
 }
+
+// Always ensure apple-touch-icon uses the correct built icon path
+html = html.replace(/href="\/assets\/icon\.png"/g, 'href="/icon-192.png"');
+
+// Patch expo-reset: use 100dvh for html so mobile PWA gets correct height
+// 100dvh = dynamic viewport height (excludes browser/system UI) — no overflow:hidden on html/body needed
+html = html.replace(
+  /(<style id="expo-reset">[\s\S]*?html,\s*\n?\s*body\s*\{\s*\n?\s*height:\s*100%[\s\S]*?<\/style>)/,
+  (match) => match.replace(
+    /html,\s*\n?\s*body\s*\{\s*\n?\s*height:\s*100%;?\s*\n?\s*\}/,
+    'html, body { height: 100%; }'
+  )
+);
+
+// Always inject/replace PWA scroll fix CSS
+const scrollFixCSS = `<style id="pwa-scroll-fix">
+  /* Mobile PWA scroll fix — use dvh (dynamic viewport height) for modern browsers */
+  html { height: -webkit-fill-available; }
+  @supports (height: 100dvh) { html { height: 100dvh; } }
+  body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+  #root { height: 100%; display: flex; flex: 1; }
+  /* Allow touch-scroll on all scrollable divs — critical for Android PWA */
+  * { -webkit-overflow-scrolling: touch; }
+  div { touch-action: pan-y pinch-zoom; }
+  div[style*="overflow-y: scroll"], div[style*="overflow-y:scroll"],
+  div[style*="overflow: scroll"], div[style*="overflow:scroll"],
+  div[style*="overflow: auto"], div[style*="overflow:auto"] {
+    touch-action: pan-y !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch !important;
+  }
+</style>`;
+if (html.includes('id="pwa-scroll-fix"')) {
+  html = html.replace(/<style id="pwa-scroll-fix">[\s\S]*?<\/style>/, scrollFixCSS);
+} else {
+  html = html.replace('</head>', scrollFixCSS + '\n</head>');
+}
+console.log('✅ Injected PWA scroll fix CSS');
 
 fs.writeFileSync(indexPath, html);
 console.log('✅ dist/index.html patched');

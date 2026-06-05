@@ -6,23 +6,33 @@ import {
 } from 'react-native';
 import { useToast } from '../context/ToastContext';
 import { useAppData } from '../context/AppDataContext';
-import { collection, onSnapshot, orderBy, query, deleteDoc, doc } from 'firebase/firestore';
+import { collection, onSnapshot, orderBy, query, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { db, storage, IS_DEMO } from '../services/firebase';
 import { DEMO_PRODUCTS } from '../services/demoData';
 import { C, CAT } from '../constants/theme';
 
 export default function AdminScreen({ navigation, switchTab, editProduct }) {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [search, setSearch]     = useState('');
-  const { showToast }           = useToast();
-  const { setProductStock, getStock } = useAppData();
-  const { width }               = useWindowDimensions();
-  const isWeb                   = Platform.OS === 'web';
+  const [products, setProducts]     = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [search, setSearch]         = useState('');
+  const [editPriceId, setEditPriceId]   = useState(null);
+  const [editPriceVal, setEditPriceVal] = useState('');
+  const { showToast }               = useToast();
+  const { products: ctxProducts, loading: ctxLoading, setProductStock, getStock, updateProductDemo, removeProduct } = useAppData();
+  const { width }                   = useWindowDimensions();
+  const isWeb                       = Platform.OS === 'web';
 
+  // Demo mode: mirror context products (includes localStorage additions/edits/deletes).
   useEffect(() => {
-    if (IS_DEMO) { setProducts(DEMO_PRODUCTS); setLoading(false); return; }
+    if (!IS_DEMO) return;
+    setProducts(ctxProducts);
+    setLoading(false);
+  }, [ctxProducts]);
+
+  // Firebase mode: own real-time listener.
+  useEffect(() => {
+    if (IS_DEMO) return;
     const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
     const unsub = onSnapshot(q, (snap) => {
       setProducts(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
@@ -33,7 +43,7 @@ export default function AdminScreen({ navigation, switchTab, editProduct }) {
 
   const performDelete = async (item) => {
     if (IS_DEMO) {
-      setProducts(p => p.filter(x => x.id !== item.id));
+      removeProduct(item.id);
       showToast(`"${item.name}" deleted`, 'success');
       return;
     }
@@ -78,6 +88,27 @@ export default function AdminScreen({ navigation, switchTab, editProduct }) {
     { label: 'Avg. Price',     value: `Rs.${avgPrice.toLocaleString()}`, icon: '💰', color: '#fef9c3', textColor: '#a16207' },
   ];
 
+  const startEditPrice = (item) => {
+    setEditPriceId(item.id);
+    setEditPriceVal(String(item.price || ''));
+  };
+
+  const savePrice = async (item) => {
+    const newPrice = Number(editPriceVal);
+    if (!newPrice || newPrice <= 0) { showToast('Sahi price likhein', 'error'); return; }
+    setEditPriceId(null);
+    if (IS_DEMO) {
+      setProducts(prev => prev.map(p => p.id === item.id ? { ...p, price: newPrice } : p));
+      updateProductDemo(item.id, { ...item, price: newPrice });
+      showToast(`Price update: Rs.${newPrice.toLocaleString()}`, 'success');
+      return;
+    }
+    try {
+      await updateDoc(doc(db, 'products', item.id), { price: newPrice });
+      showToast(`Price update: Rs.${newPrice.toLocaleString()}`, 'success');
+    } catch { showToast('Price save nahi ho saka', 'error'); }
+  };
+
   const handleStockChange = (item, delta) => {
     const current = getStock(item.id, item.stock ?? 0);
     const newQty = Math.max(0, current + delta);
@@ -117,7 +148,29 @@ export default function AdminScreen({ navigation, switchTab, editProduct }) {
             </View>
           )}
           <Text style={styles.cardUnit}>{item.unit}</Text>
-          <Text style={styles.cardPrice}>Rs. {item.price?.toLocaleString()}</Text>
+          {editPriceId === item.id ? (
+            <View style={styles.priceEditRow}>
+              <Text style={styles.priceRs}>Rs.</Text>
+              <TextInput
+                style={styles.priceInput}
+                value={editPriceVal}
+                onChangeText={setEditPriceVal}
+                keyboardType="numeric"
+                autoFocus
+                selectTextOnFocus
+                onSubmitEditing={() => savePrice(item)}
+                onBlur={() => savePrice(item)}
+              />
+              <TouchableOpacity style={styles.priceSaveBtn} onPress={() => savePrice(item)}>
+                <Text style={styles.priceSaveTxt}>✓</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity onPress={() => startEditPrice(item)} style={styles.priceRow}>
+              <Text style={styles.cardPrice}>Rs. {item.price?.toLocaleString()}</Text>
+              <Text style={styles.priceEditHint}>✏️</Text>
+            </TouchableOpacity>
+          )}
 
           {/* Stock control */}
           <View style={styles.stockRow}>
@@ -204,12 +257,6 @@ export default function AdminScreen({ navigation, switchTab, editProduct }) {
           <Text style={styles.addBtnHeaderText}>+ Add Product</Text>
         </TouchableOpacity>
       </View>
-
-      {IS_DEMO && (
-        <View style={styles.demoBanner}>
-          <Text style={styles.demoText}>🧪 Demo Mode — stock changes save locally</Text>
-        </View>
-      )}
 
       {/* Search bar */}
       <View style={styles.searchBar}>
@@ -324,7 +371,14 @@ const styles = StyleSheet.create({
   catPill:   { alignSelf: 'flex-start', borderRadius: 5, paddingHorizontal: 7, paddingVertical: 2, marginTop: 4 },
   catPillText: { fontSize: 9, fontWeight: '700' },
   cardUnit:  { fontSize: 10, color: C.textLight, marginTop: 2 },
-  cardPrice: { fontSize: 14, fontWeight: '800', color: C.primary, marginTop: 3 },
+  cardPrice: { fontSize: 14, fontWeight: '800', color: C.primary },
+  priceRow:       { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
+  priceEditHint:  { fontSize: 10 },
+  priceEditRow:   { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
+  priceRs:        { fontSize: 12, fontWeight: '700', color: C.primary },
+  priceInput:     { flex: 1, borderWidth: 1.5, borderColor: C.primary, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3, fontSize: 13, fontWeight: '800', color: C.primary, minWidth: 60 },
+  priceSaveBtn:   { backgroundColor: C.primary, borderRadius: 6, width: 26, height: 26, justifyContent: 'center', alignItems: 'center' },
+  priceSaveTxt:   { color: '#fff', fontWeight: '800', fontSize: 13 },
 
   /* Stock control */
   stockRow:   { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 5 },

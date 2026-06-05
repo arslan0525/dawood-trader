@@ -88,15 +88,6 @@ function MagicLinkForm({ onBack }) {
 
   return (
     <View>
-      {IS_DEMO && (
-        <View style={s.demoBanner}>
-          <Text style={s.demoTitle}>🧪 Demo Mode</Text>
-          <Text style={s.demoBody}>
-            Enter any email and tap Send Link.{'\n'}
-            Admin: <Text style={{ fontWeight: '700' }}>admin@dawoodtrader.com</Text>
-          </Text>
-        </View>
-      )}
       <Text style={s.magicDesc}>
         Enter your email and we'll send you a secure login link. No password needed!
       </Text>
@@ -203,16 +194,6 @@ export default function LoginScreen({ navigation }) {
           {/* Password login */}
           {authMode === 'password' && (
             <>
-              {IS_DEMO && (
-                <View style={s.demoBanner}>
-                  <Text style={s.demoTitle}>🧪 Demo Mode</Text>
-                  <Text style={s.demoBody}>
-                    Admin: admin@dawoodtrader.com{'\n'}
-                    Customer: koi bhi email + koi password
-                  </Text>
-                </View>
-              )}
-
               <Text style={s.label}>Email Address</Text>
               <InputRow
                 icon="✉️"

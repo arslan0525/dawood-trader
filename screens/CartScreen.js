@@ -1,4 +1,7 @@
-import React from 'react';
+
+
+
+import React, { memo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   Image, Linking, Alert, Platform,
@@ -8,6 +11,64 @@ import { useAuth } from '../context/AuthContext';
 import { C, CAT } from '../constants/theme';
 
 const DAWOOD_WHATSAPP = '923364459040';
+
+const CartItem = memo(function CartItem({ item, onUpdateQty, onRemove }) {
+  const cat    = CAT[item.category] || CAT.default;
+  const imgUri = item.imageUrls?.[0] || item.imageUrl || null;
+  return (
+    <View style={styles.item}>
+      {imgUri
+        ? <Image source={{ uri: imgUri }} style={styles.itemImg} resizeMode="contain" />
+        : <View style={[styles.itemImg, { backgroundColor: cat.bg, justifyContent: 'center', alignItems: 'center' }]}>
+            <Text style={{ fontSize: 28 }}>{cat.icon}</Text>
+          </View>
+      }
+      <View style={styles.itemBody}>
+        <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
+        <Text style={styles.itemUnit}>{item.unit || 'piece'}  ·  Rs. {item.price?.toLocaleString()}</Text>
+        <View style={styles.qtyRow}>
+          <TouchableOpacity style={styles.qtyBtn} onPress={() => onUpdateQty(item.id, item.qty - 1)}>
+            <Text style={styles.qtyBtnText}>−</Text>
+          </TouchableOpacity>
+          <Text style={styles.qtyNum}>{item.qty}</Text>
+          <TouchableOpacity style={styles.qtyBtn} onPress={() => onUpdateQty(item.id, item.qty + 1)}>
+            <Text style={styles.qtyBtnText}>+</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+      <View style={styles.itemRight}>
+        <Text style={styles.itemTotal}>Rs. {(item.price * item.qty).toLocaleString()}</Text>
+        <TouchableOpacity style={styles.removeBtn} onPress={() => onRemove(item.id)}>
+          <Text style={{ fontSize: 13, color: C.danger, fontWeight: '700' }}>✕</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+});
+
+const OrderSummary = memo(function OrderSummary({ cart, total, onOrder }) {
+  return (
+    <View style={styles.summary}>
+      <Text style={styles.summaryTitle}>Order Summary</Text>
+      <View style={styles.summaryRow}>
+        <Text style={styles.summaryLabel}>Items ({cart.reduce((s, i) => s + i.qty, 0)})</Text>
+        <Text style={styles.summaryValue}>Rs. {total.toLocaleString()}</Text>
+      </View>
+      <View style={styles.summaryRow}>
+        <Text style={styles.summaryLabel}>Delivery</Text>
+        <Text style={[styles.summaryValue, { color: C.success }]}>WhatsApp pe confirm</Text>
+      </View>
+      <View style={styles.divider} />
+      <View style={styles.summaryRow}>
+        <Text style={styles.totalLabel}>Total</Text>
+        <Text style={styles.totalValue}>Rs. {total.toLocaleString()}</Text>
+      </View>
+      <TouchableOpacity style={styles.orderBtn} onPress={onOrder} activeOpacity={0.88}>
+        <Text style={styles.orderBtnText}>📱  Order via WhatsApp</Text>
+      </TouchableOpacity>
+    </View>
+  );
+});
 
 export default function CartScreen({ navigation, switchTab }) {
   const { cart, removeFromCart, updateQty, clearCart, total } = useCart();
@@ -27,62 +88,6 @@ export default function CartScreen({ navigation, switchTab }) {
       else Alert.alert('Error', 'WhatsApp install karein');
     });
   };
-
-  const CartItem = ({ item }) => {
-    const cat    = CAT[item.category] || CAT.default;
-    const imgUri = item.imageUrls?.[0] || item.imageUrl || null;
-    return (
-      <View style={styles.item}>
-        {imgUri
-          ? <Image source={{ uri: imgUri }} style={styles.itemImg} resizeMode="contain" />
-          : <View style={[styles.itemImg, { backgroundColor: cat.bg, justifyContent: 'center', alignItems: 'center' }]}>
-              <Text style={{ fontSize: 28 }}>{cat.icon}</Text>
-            </View>
-        }
-        <View style={styles.itemBody}>
-          <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
-          <Text style={styles.itemUnit}>{item.unit || 'piece'}  ·  Rs. {item.price?.toLocaleString()}</Text>
-          <View style={styles.qtyRow}>
-            <TouchableOpacity style={styles.qtyBtn} onPress={() => updateQty(item.id, item.qty - 1)}>
-              <Text style={styles.qtyBtnText}>−</Text>
-            </TouchableOpacity>
-            <Text style={styles.qtyNum}>{item.qty}</Text>
-            <TouchableOpacity style={styles.qtyBtn} onPress={() => updateQty(item.id, item.qty + 1)}>
-              <Text style={styles.qtyBtnText}>+</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-        <View style={styles.itemRight}>
-          <Text style={styles.itemTotal}>Rs. {(item.price * item.qty).toLocaleString()}</Text>
-          <TouchableOpacity style={styles.removeBtn} onPress={() => removeFromCart(item.id)}>
-            <Text style={{ fontSize: 13, color: C.danger, fontWeight: '700' }}>✕</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  };
-
-  const OrderSummary = () => (
-    <View style={styles.summary}>
-      <Text style={styles.summaryTitle}>Order Summary</Text>
-      <View style={styles.summaryRow}>
-        <Text style={styles.summaryLabel}>Items ({cart.reduce((s, i) => s + i.qty, 0)})</Text>
-        <Text style={styles.summaryValue}>Rs. {total.toLocaleString()}</Text>
-      </View>
-      <View style={styles.summaryRow}>
-        <Text style={styles.summaryLabel}>Delivery</Text>
-        <Text style={[styles.summaryValue, { color: C.success }]}>WhatsApp pe confirm</Text>
-      </View>
-      <View style={styles.divider} />
-      <View style={styles.summaryRow}>
-        <Text style={styles.totalLabel}>Total</Text>
-        <Text style={styles.totalValue}>Rs. {total.toLocaleString()}</Text>
-      </View>
-      <TouchableOpacity style={styles.orderBtn} onPress={handleOrder} activeOpacity={0.88}>
-        <Text style={styles.orderBtnText}>📱  Order via WhatsApp</Text>
-      </TouchableOpacity>
-    </View>
-  );
 
   /* ── Empty cart ── */
   if (cart.length === 0) {
@@ -122,13 +127,13 @@ export default function CartScreen({ navigation, switchTab }) {
           {/* Items list */}
           <ScrollView style={[styles.webItemsCol, { flex: 1 }]} showsVerticalScrollIndicator>
             <View style={{ padding: 20, paddingRight: 10 }}>
-              {cart.map((item) => <CartItem key={item.id} item={item} />)}
+              {cart.map((item) => <CartItem key={item.id} item={item} onUpdateQty={updateQty} onRemove={removeFromCart} />)}
             </View>
           </ScrollView>
 
           {/* Summary panel */}
           <ScrollView style={styles.webSummaryCol} showsVerticalScrollIndicator={false}>
-            <OrderSummary />
+            <OrderSummary cart={cart} total={total} onOrder={handleOrder} />
           </ScrollView>
         </View>
       </View>
@@ -149,11 +154,11 @@ export default function CartScreen({ navigation, switchTab }) {
       </View>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 14, paddingBottom: 260 }}
         showsVerticalScrollIndicator={false}>
-        {cart.map((item) => <CartItem key={item.id} item={item} />)}
+        {cart.map((item) => <CartItem key={item.id} item={item} onUpdateQty={updateQty} onRemove={removeFromCart} />)}
       </ScrollView>
       {/* Sticky footer on mobile */}
       <View style={styles.mobileFooter}>
-        <OrderSummary />
+        <OrderSummary cart={cart} total={total} onOrder={handleOrder} />
       </View>
     </View>
   );

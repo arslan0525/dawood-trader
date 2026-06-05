@@ -110,9 +110,6 @@ export default function ProfileScreen({ navigation, switchTab }) {
 
       {/* Header */}
       <View style={s.header}>
-        {IS_DEMO && (
-          <View style={s.demoPill}><Text style={s.demoPillTxt}>🧪 Demo Mode</Text></View>
-        )}
         <Text style={s.headerTitle}>My Account</Text>
       </View>
 
@@ -192,8 +189,8 @@ export default function ProfileScreen({ navigation, switchTab }) {
         <MenuItem
           icon="🔐"
           label="Change Password"
-          sublabel={IS_DEMO ? 'Demo mode mein disabled' : 'Update your password'}
-          onPress={IS_DEMO ? () => showToast('Demo mode mein password change nahi hota', 'info') : () => setShowPassModal(true)}
+          sublabel={'Update your password'}
+          onPress={() => setShowPassModal(true)}
         />
       </View>
 

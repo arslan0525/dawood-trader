@@ -111,7 +111,7 @@ function PaymentModal({ visible, order, onClose, onSuccess }) {
   );
 }
 
-export default function RecoveryScreen({ switchTab, viewCustomer }) {
+export default function RecoveryScreen({ switchTab, viewCustomer, navigation }) {
   const { orders, customers, payments, ROUTES } = useAppData();
   const { t } = useLang();
   const { width } = useWindowDimensions();
@@ -170,6 +170,11 @@ export default function RecoveryScreen({ switchTab, viewCustomer }) {
     <View style={rc.root}>
       {/* Header */}
       <View style={rc.header}>
+        {!switchTab && (
+          <TouchableOpacity style={rc.backBtn} onPress={() => navigation.goBack()}>
+            <Text style={rc.backText}>‹ Back</Text>
+          </TouchableOpacity>
+        )}
         <View style={{ flex: 1 }}>
           <Text style={rc.headerTitle}>💰 {t('recovery')}</Text>
           <Text style={rc.headerSub}>Payment Recovery Management</Text>
@@ -229,7 +234,7 @@ export default function RecoveryScreen({ switchTab, viewCustomer }) {
             </TouchableOpacity>
           )}
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', gap: 6, paddingTop: 8 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0, flexShrink: 0, maxHeight: 50 }} contentContainerStyle={{ flexDirection: 'row', gap: 6, paddingTop: 8 }}>
           <TouchableOpacity
             style={[rc.routeChip, routeFilter === 0 && rc.routeChipActive]}
             onPress={() => setRouteFilter(0)}
@@ -386,6 +391,8 @@ const rc = StyleSheet.create({
   },
   headerTitle: { color: '#fff', fontSize: 20, fontWeight: '800' },
   headerSub:   { color: 'rgba(255,255,255,0.6)', fontSize: 11, marginTop: 2 },
+  backBtn:     { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.15)', marginRight: 12 },
+  backText:    { color: '#fff', fontSize: 14, fontWeight: '600' },
 
   statsRow: { flexDirection: 'row', padding: 12, gap: 10 },
   statCard: { flex: 1, borderRadius: 12, padding: 14, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },

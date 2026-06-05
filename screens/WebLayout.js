@@ -301,7 +301,10 @@ export default function WebLayout({ navigation }) {
       { key: 'Customers',    icon: '👥', label: 'Customers' },
       { key: 'OrderHistory', icon: '📋', label: 'History'   },
       { key: 'Recovery',     icon: '💰', label: 'Recovery'  },
-      ...(isAdmin ? [{ key: 'Inventory', icon: '📦', label: 'Inventory' }] : []),
+      ...(isAdmin ? [
+        { key: 'Inventory',  icon: '📦', label: 'Inventory' },
+        { key: 'AddProduct', icon: '➕', label: 'Add Item'  },
+      ] : []),
       { key: 'Profile',      icon: '👤', label: 'Profile'   },
     ];
 
@@ -426,9 +429,6 @@ export default function WebLayout({ navigation }) {
         </ScrollView>
 
         <View style={wl.sideFooter}>
-          {IS_DEMO && (
-            <View style={wl.demoPill}><Text style={wl.demoPillTxt}>🧪 Demo Mode</Text></View>
-          )}
           <TouchableOpacity style={wl.userRow} onPress={() => switchTab('Profile')}>
             <View style={wl.userAvatar}><Text style={wl.userAvatarTxt}>{initials}</Text></View>
             <View style={{ flex: 1, minWidth: 0 }}>
@@ -465,7 +465,7 @@ export default function WebLayout({ navigation }) {
 const wl = StyleSheet.create({
   root: {
     flex: 1, flexDirection: 'row', backgroundColor: '#f0f4fa',
-    ...(Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}),
+    ...(Platform.OS === 'web' ? { height: 'calc(var(--vh, 1vh) * 100)', overflow: 'hidden' } : {}),
   },
 
   /* Sidebar */
@@ -571,5 +571,5 @@ const wl = StyleSheet.create({
   mobileBackTxt:   { fontSize: 13, color: C.primary, fontWeight: '700' },
   mobileBackPage:  { fontSize: 13, fontWeight: '700', color: '#0f172a' },
 
-  mobileContent: { flex: 1, minHeight: 0, overflow: 'hidden' },
+  mobileContent: { flex: 1, minHeight: 0 },
 });

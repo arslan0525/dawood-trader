@@ -157,7 +157,11 @@ function AppNavigator() {
   const MainLayout = Platform.OS === 'web' ? WebLayout : MobileTabs;
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{
+        headerShown: false,
+        gestureEnabled: Platform.OS !== 'web',
+        cardStyle: { flex: 1, backgroundColor: 'transparent' },
+      }}>
       {user ? (
         <>
           <Stack.Screen name="Main"          component={MainLayout}         />
@@ -181,7 +185,7 @@ function AppNavigator() {
 
 export default function App() {
   return (
-    <View style={{ flex: 1, ...(Platform.OS === 'web' ? { height: '100vh', maxHeight: '100vh', overflow: 'hidden' } : {}) }}>
+    <View style={{ flex: 1, ...(Platform.OS === 'web' ? { height: 'calc(var(--vh, 1vh) * 100)', overflow: 'hidden' } : {}) }}>
       <ToastProvider>
         <LanguageProvider>
           <AuthProvider>

@@ -21,18 +21,25 @@ function RouteBadge({ routeId, routes }) {
   );
 }
 
-function CustomerCard({ customer, routes, onEdit, onDelete, orders }) {
+function CustomerCard({ customer, routes, onEdit, onDelete, onToggleStatus, orders }) {
   const customerOrders = orders.filter(o => o.customerId === customer.id);
   const outstanding = customerOrders.reduce((s, o) => s + (o.remaining || 0), 0);
+  const isDisabled = customer.status === 'disabled';
+
   return (
-    <View style={cs.card}>
+    <View style={[cs.card, isDisabled && cs.cardDisabled]}>
       <View style={cs.cardLeft}>
-        <View style={cs.avatar}>
+        <View style={[cs.avatar, isDisabled && { backgroundColor: '#94a3b8' }]}>
           <Text style={cs.avatarTxt}>{customer.name?.[0]?.toUpperCase() || '?'}</Text>
         </View>
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={cs.cardName} numberOfLines={1}>{customer.name}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text style={[cs.cardName, isDisabled && { color: '#94a3b8' }]} numberOfLines={1}>{customer.name}</Text>
+          {isDisabled && (
+            <View style={cs.disabledBadge}><Text style={cs.disabledBadgeTxt}>Disabled</Text></View>
+          )}
+        </View>
         <Text style={cs.cardPhone}>📞 {customer.phone || '—'}</Text>
         <Text style={cs.cardAddress} numberOfLines={1}>📍 {customer.address || '—'}</Text>
         <View style={cs.cardFooter}>
@@ -47,6 +54,12 @@ function CustomerCard({ customer, routes, onEdit, onDelete, orders }) {
       <View style={cs.cardActions}>
         <TouchableOpacity style={cs.editBtn} onPress={() => onEdit(customer)}>
           <Text style={{ fontSize: 15 }}>✏️</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[cs.statusBtn, isDisabled ? cs.activateBtn : cs.disableBtn]}
+          onPress={() => onToggleStatus(customer)}
+        >
+          <Text style={{ fontSize: 13 }}>{isDisabled ? '✅' : '🚫'}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={cs.delBtn} onPress={() => onDelete(customer)}>
           <Text style={{ fontSize: 15 }}>🗑️</Text>
@@ -64,7 +77,9 @@ function CustomerModal({ visible, initial, routes, onSave, onClose, saving }) {
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  const InputField = ({ label, field, ...props }) => (
+  // ⚠️ Called as function {inputField({...})} — NOT as <InputField /> component
+  // This prevents TextInput from losing focus on every keystroke
+  const inputField = ({ label, field, ...props }) => (
     <View style={cs.fieldWrap}>
       <Text style={cs.fieldLabel}>{label}</Text>
       <TextInput
@@ -79,7 +94,10 @@ function CustomerModal({ visible, initial, routes, onSave, onClose, saving }) {
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
         <View style={cs.modalOverlay}>
           <View style={cs.modalCard}>
             <View style={cs.modalHeader}>
@@ -91,22 +109,29 @@ function CustomerModal({ visible, initial, routes, onSave, onClose, saving }) {
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-              <InputField label={t('customerName') + ' *'} field="name" placeholder="e.g. Ahmed Store" autoCapitalize="words" />
-              <InputField label={t('phone')} field="phone" placeholder="e.g. 0321-1234567" keyboardType="phone-pad" />
-              <InputField label={t('address')} field="address" placeholder="Full address" multiline numberOfLines={2} style={{ height: 60, textAlignVertical: 'top' }} />
-              <InputField label={t('notes')} field="notes" placeholder="Notes (optional)" multiline numberOfLines={2} style={{ height: 60, textAlignVertical: 'top' }} />
+            <ScrollView
+              style={{ flex: 1 }}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ paddingBottom: 8 }}
+            >
+              {inputField({ label: t('customerName') + ' *', field: 'name', placeholder: 'Ahmed Store', autoCapitalize: 'words' })}
+              {inputField({ label: t('phone'), field: 'phone', placeholder: '0321-1234567', keyboardType: 'phone-pad' })}
+              {inputField({ label: t('address'), field: 'address', placeholder: 'Gali / Mohalla / Shehar', multiline: true, numberOfLines: 2, style: { height: 60, textAlignVertical: 'top' } })}
+              {inputField({ label: t('notes'), field: 'notes', placeholder: 'Notes (optional)', multiline: true, numberOfLines: 2, style: { height: 60, textAlignVertical: 'top' } })}
 
               <View style={cs.fieldWrap}>
                 <Text style={cs.fieldLabel}>{t('routeNo')} *</Text>
-                <View style={cs.routeGrid}>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  contentContainerStyle={cs.routeGrid}
+                >
                   {routes.map(r => (
                     <TouchableOpacity
                       key={r.id}
-                      style={[
-                        cs.routeChip,
-                        form.routeId === r.id && { backgroundColor: r.color, borderColor: r.textColor + '66' },
-                      ]}
+                      style={[cs.routeChip, form.routeId === r.id && { backgroundColor: r.color, borderColor: r.textColor + '66' }]}
                       onPress={() => set('routeId', r.id)}
                     >
                       <Text style={[cs.routeChipTxt, form.routeId === r.id && { color: r.textColor, fontWeight: '700' }]}>
@@ -114,7 +139,7 @@ function CustomerModal({ visible, initial, routes, onSave, onClose, saving }) {
                       </Text>
                     </TouchableOpacity>
                   ))}
-                </View>
+                </ScrollView>
               </View>
             </ScrollView>
 
@@ -207,6 +232,17 @@ export default function CustomersScreen({ switchTab, viewCustomer }) {
     }
   };
 
+  const handleToggleStatus = async (customer) => {
+    const newStatus = customer.status === 'disabled' ? 'active' : 'disabled';
+    const label = newStatus === 'disabled' ? 'disable' : 'reactivate';
+    try {
+      await updateCustomer(customer.id, { ...customer, status: newStatus });
+      showToast(`"${customer.name}" ${newStatus === 'disabled' ? 'disabled' : 'reactivated'}`, 'success');
+    } catch {
+      showToast(`Could not ${label}`, 'error');
+    }
+  };
+
   return (
     <View style={cs.root}>
       {/* Header */}
@@ -239,7 +275,7 @@ export default function CustomersScreen({ switchTab, viewCustomer }) {
         </View>
       </View>
 
-      {/* Route filter chips */}
+      {/* Route filter chips — swipe left/right to see all */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -295,6 +331,7 @@ export default function CustomersScreen({ switchTab, viewCustomer }) {
                 orders={orders}
                 onEdit={openEdit}
                 onDelete={handleDelete}
+                onToggleStatus={handleToggleStatus}
               />
             </TouchableOpacity>
           ))
@@ -332,9 +369,9 @@ const cs = StyleSheet.create({
   searchBox:   { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f4f7fc', borderRadius: 12, borderWidth: 1.5, borderColor: '#e2e8f0', paddingHorizontal: 12, gap: 8 },
   searchInput: { flex: 1, paddingVertical: 9, fontSize: 14, color: C.text },
 
-  chipScroll: { backgroundColor: '#fff', maxHeight: 52, borderBottomWidth: 1, borderBottomColor: '#e2e8f0' },
-  chipRow:    { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 8, gap: 6 },
-  chip:       { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 16, borderWidth: 1.5, borderColor: '#e2e8f0', backgroundColor: '#fff' },
+  chipScroll: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e2e8f0', flexGrow: 0, flexShrink: 0, maxHeight: 50 },
+  chipRow:    { flexDirection: 'row', paddingHorizontal: 10, paddingVertical: 8, paddingBottom: 10, gap: 6, alignItems: 'center' },
+  chip:       { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16, borderWidth: 1.5, borderColor: '#e2e8f0', backgroundColor: '#fff' },
   chipActive: { backgroundColor: '#eff6ff', borderColor: C.primary },
   chipTxt:    { fontSize: 11, fontWeight: '500', color: '#64748b' },
   chipTxtActive: { color: C.primary, fontWeight: '700' },
@@ -358,9 +395,15 @@ const cs = StyleSheet.create({
   routeBadgeTxt: { fontSize: 10, fontWeight: '700' },
   debtBadge:   { backgroundColor: '#fee2e2', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   debtTxt:     { fontSize: 10, fontWeight: '700', color: '#b91c1c' },
-  cardActions: { flexDirection: 'column', gap: 8, marginLeft: 8 },
-  editBtn:     { width: 36, height: 36, borderRadius: 9, backgroundColor: '#eff6ff', justifyContent: 'center', alignItems: 'center' },
-  delBtn:      { width: 36, height: 36, borderRadius: 9, backgroundColor: '#fee2e2', justifyContent: 'center', alignItems: 'center' },
+  cardDisabled:      { opacity: 0.7, backgroundColor: '#f8fafc' },
+  disabledBadge:     { backgroundColor: '#fee2e2', borderRadius: 5, paddingHorizontal: 6, paddingVertical: 2 },
+  disabledBadgeTxt:  { fontSize: 9, fontWeight: '800', color: '#dc2626' },
+  cardActions:       { flexDirection: 'column', gap: 6, marginLeft: 8 },
+  editBtn:           { width: 34, height: 34, borderRadius: 9, backgroundColor: '#eff6ff', justifyContent: 'center', alignItems: 'center' },
+  statusBtn:         { width: 34, height: 34, borderRadius: 9, justifyContent: 'center', alignItems: 'center' },
+  disableBtn:        { backgroundColor: '#fff7ed' },
+  activateBtn:       { backgroundColor: '#f0fdf4' },
+  delBtn:            { width: 34, height: 34, borderRadius: 9, backgroundColor: '#fee2e2', justifyContent: 'center', alignItems: 'center' },
 
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60, gap: 10 },
   emptyTitle:  { fontSize: 16, fontWeight: '700', color: C.textMid },
@@ -371,7 +414,9 @@ const cs = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
   modalCard: {
     backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    padding: 24, paddingBottom: Platform.OS === 'ios' ? 44 : 24, maxHeight: '90%',
+    padding: 24, paddingBottom: Platform.OS === 'ios' ? 44 : 24,
+    maxHeight: '92%', minHeight: 400,
+    flex: 0,
   },
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
   modalTitle:  { fontSize: 18, fontWeight: '800', color: C.text },
@@ -385,7 +430,7 @@ const cs = StyleSheet.create({
     backgroundColor: '#f8fafc',
   },
 
-  routeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  routeGrid: { flexDirection: 'row', gap: 8, paddingVertical: 4, paddingHorizontal: 2 },
   routeChip: {
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10,
     borderWidth: 1.5, borderColor: '#e2e8f0', backgroundColor: '#f8fafc',

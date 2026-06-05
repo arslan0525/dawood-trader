@@ -16,32 +16,47 @@
     <meta name="theme-color" content="#2563eb" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Dawood Trader" />
     <link rel="manifest" href="/manifest.json" />
 
     <!-- Open Graph -->
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content="Dawood Trader — Distribution & Billing System" />
+    <meta property="og:type"        content="website" />
+    <meta property="og:url"         content="https://dawood-trader-kappa.vercel.app/" />
+    <meta property="og:title"       content="Dawood Trader — Distribution & Billing System" />
     <meta property="og:description" content="Complete Distribution, Inventory, Billing & Customer Management System for Pakistan businesses." />
-    <meta property="og:site_name" content="Dawood Trader" />
+    <meta property="og:site_name"   content="Dawood Trader" />
+    <meta property="og:image"       content="https://dawood-trader-kappa.vercel.app/icon-512.png" />
 
     <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="Dawood Trader" />
+    <meta name="twitter:card"        content="summary_large_image" />
+    <meta name="twitter:url"         content="https://dawood-trader-kappa.vercel.app/" />
+    <meta name="twitter:title"       content="Dawood Trader" />
     <meta name="twitter:description" content="Distribution & Billing Management System" />
+    <meta name="twitter:image"       content="https://dawood-trader-kappa.vercel.app/icon-512.png" />
 
     <!-- Canonical -->
-    <link rel="canonical" href="/" />
+    <link rel="canonical" href="https://dawood-trader-kappa.vercel.app/" />
 
     <!-- Favicon -->
     <link rel="icon" href="/favicon.ico" />
-    <link rel="apple-touch-icon" href="/assets/icon.png" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
 
     <style id="expo-reset">
-      html, body { height: 100%; }
-      body { overflow: hidden; margin: 0; padding: 0; }
-      #root { display: flex; height: 100%; flex: 1; }
+      html, body { height: 100%; margin: 0; padding: 0; }
+      body { overflow: hidden; overscroll-behavior: none; }
+      /* --vh is set by JS to window.innerHeight/100 — fixes Android PWA 100vh bug */
+      :root { --vh: 1vh; }
+      #root { display: flex; height: calc(var(--vh, 1vh) * 100); flex: 1; }
+      /* Touch scroll fix for Android PWA */
+      * { -webkit-overflow-scrolling: touch; }
+      div[style*="overflow-y: scroll"],
+      div[style*="overflow-y:scroll"],
+      div[style*="overflow: scroll"],
+      div[style*="overflow:scroll"] {
+        touch-action: pan-y !important;
+        overscroll-behavior: contain;
+      }
     </style>
   </head>
   <body>

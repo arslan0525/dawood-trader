@@ -13,6 +13,7 @@ import { C, CAT, UNIT_TYPES } from '../constants/theme';
 import InputRow from '../components/InputRow';
 import CropModal from '../components/CropModal';
 import { useToast } from '../context/ToastContext';
+import { useAppData } from '../context/AppDataContext';
 
 const CATEGORIES = ['Cold Drinks', 'Masala', 'Pickles', 'Pasta', 'Grocery', 'Snacks', 'Household', 'Bricks'];
 const MAX_IMAGES = 5;
@@ -43,6 +44,7 @@ export default function AddItemScreen({ route, navigation }) {
   const [saving,      setSaving]      = useState(false);
   const [savedBanner, setSavedBanner] = useState(false);
   const { showToast } = useToast();
+  const { addProductDemo, updateProductDemo } = useAppData();
   const scrollRef = useRef(null);
 
   /* ── Multi-image state ──
@@ -210,7 +212,27 @@ export default function AddItemScreen({ route, navigation }) {
     if (!category)                  { Alert.alert('Error', 'Category select karein'); return; }
 
     if (IS_DEMO) {
-      showToast(editProduct ? 'Product updated! (Demo)' : 'Product added! (Demo)', 'info');
+      const productData = {
+        name:        name.trim(),
+        price:       Number(price),
+        description: description.trim(),
+        category,
+        unit,
+        stock:       stock ? Number(stock) : 0,
+        inStock,
+        sku:         sku.trim(),
+        weight:      weight.trim(),
+        imageUrl:    images[0]?.uri || '',
+        imageUrls:   images.map(i => i.uri),
+        imagePaths:  [],
+      };
+      if (editProduct?.id) {
+        updateProductDemo(editProduct.id, productData);
+        showToast('Product update ho gaya!', 'success');
+      } else {
+        addProductDemo(productData);
+        showToast('Product add ho gaya!', 'success');
+      }
       if (tabMode) {
         resetForm();
         setSavedBanner(true);

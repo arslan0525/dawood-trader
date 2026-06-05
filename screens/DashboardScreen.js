@@ -1,12 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, memo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   Platform, useWindowDimensions,
 } from 'react-native';
 import { useAppData } from '../context/AppDataContext';
 import { useLang }    from '../context/LanguageContext';
-import { DEMO_PRODUCTS } from '../services/demoData';
-import { IS_DEMO }    from '../services/firebase';
 import { C }          from '../constants/theme';
 
 function fmtDate(ts) {
@@ -19,7 +17,7 @@ function fmtCurrency(n) {
   return 'Rs.' + (n || 0).toLocaleString();
 }
 
-function StatCard({ icon, label, value, gradient, onPress }) {
+const StatCard = memo(function StatCard({ icon, label, value, gradient, onPress }) {
   const [bg1, bg2, textCol] = gradient;
   return (
     <TouchableOpacity
@@ -34,9 +32,9 @@ function StatCard({ icon, label, value, gradient, onPress }) {
       <Text style={ds.statLabel}>{label}</Text>
     </TouchableOpacity>
   );
-}
+});
 
-function OrderRow({ order, routes, onCollect }) {
+const OrderRow = memo(function OrderRow({ order, routes, onCollect }) {
   const statusColor = { paid: '#15803d', partial: '#a16207', unpaid: '#b91c1c' };
   const statusBg    = { paid: '#dcfce7', partial: '#fef9c3', unpaid: '#fee2e2' };
   const s = order.status || 'unpaid';
@@ -70,21 +68,20 @@ function OrderRow({ order, routes, onCollect }) {
       )}
     </View>
   );
-}
+});
 
 export default function DashboardScreen({ switchTab }) {
-  const { customers, orders, ROUTES, getStats } = useAppData();
+  const { products, customers, orders, ROUTES, getStats } = useAppData();
   const { t }    = useLang();
   const { width } = useWindowDimensions();
   const isWide    = width >= 768;
 
-  const allProducts = IS_DEMO ? DEMO_PRODUCTS : [];
-  const stats = useMemo(() => getStats(allProducts), [orders, allProducts]);
+  const stats = useMemo(() => getStats(products), [orders, products, getStats]);
 
   const statCards = [
     {
       icon: '📦', label: t('totalProducts'),
-      value: allProducts.length,
+      value: products.length,
       gradient: ['#eff6ff', '#3b82f6', '#1d4ed8'],
       onPress: () => switchTab?.('Home'),
     },

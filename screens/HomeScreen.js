@@ -1,14 +1,17 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, memo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   Image, ActivityIndicator, FlatList, Pressable, ScrollView,
-  Platform, useWindowDimensions,
+  Platform, useWindowDimensions, Alert,
 } from 'react-native';
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
-import { db, IS_DEMO } from '../services/firebase';
-import { DEMO_PRODUCTS } from '../services/demoData';
+import { deleteDoc, doc } from 'firebase/firestore';
+import { ref, deleteObject } from 'firebase/storage';
+import { db, storage, IS_DEMO } from '../services/firebase';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
+import { useAppData } from '../context/AppDataContext';
+import ThreeDotMenu from '../components/ThreeDotMenu';
 import { C, CAT } from '../constants/theme';
 
 const CATEGORIES = ['All', 'Cold Drinks', 'Masala', 'Pickles', 'Pasta', 'Grocery', 'Snacks', 'Household', 'Bricks'];
@@ -23,11 +26,10 @@ function timeGreeting() {
 /* ─────────────────────────────────────────────────────────── */
 /*  Variant Card                                               */
 /* ─────────────────────────────────────────────────────────── */
-function VariantCard({ item, onAdd, onPress, cardW, imgH }) {
+const VariantCard = memo(function VariantCard({ item, onAdd, onPress, cardW, imgH, isAdmin, onEdit, onDelete }) {
   const cat = CAT[item.category] || CAT.default;
   const inStock = item.inStock !== false;
 
-  // Three tiers based on card width
   const tier = cardW >= 220 ? 'lg' : cardW >= 140 ? 'md' : 'sm';
 
   const fontSize    = tier === 'lg' ? 14 : tier === 'md' ? 12 : 10;
@@ -60,6 +62,19 @@ function VariantCard({ item, onAdd, onPress, cardW, imgH }) {
             <View style={vs.oosTag}><Text style={vs.oosTagTxt}>Out of Stock</Text></View>
           </View>
         )}
+        {/* Admin quick-actions overlay */}
+        {isAdmin && (
+          <View style={vs.adminMenu}>
+            <ThreeDotMenu
+              size="sm"
+              title={item.name}
+              options={[
+                { icon: '✏️', label: 'Edit Product',   onPress: () => onEdit(item) },
+                { icon: '🗑️', label: 'Delete Product', onPress: () => onDelete(item), danger: true },
+              ]}
+            />
+          </View>
+        )}
       </View>
 
       {/* Info */}
@@ -79,12 +94,12 @@ function VariantCard({ item, onAdd, onPress, cardW, imgH }) {
       </View>
     </Pressable>
   );
-}
+});
 
 /* ─────────────────────────────────────────────────────────── */
 /*  Product Group                                              */
 /* ─────────────────────────────────────────────────────────── */
-function ProductGroup({ group, navigation, onAdd, switchTab, cardW, imgH }) {
+const ProductGroup = memo(function ProductGroup({ group, navigation, onAdd, switchTab, cardW, imgH, isAdmin, onEdit, onDelete }) {
   const cat = CAT[group.category] || CAT.default;
   const prices = group.variants.map(v => v.price);
   const lo = Math.min(...prices);
@@ -119,25 +134,28 @@ function ProductGroup({ group, navigation, onAdd, switchTab, cardW, imgH }) {
             imgH={imgH}
             onAdd={() => onAdd(variant)}
             onPress={() => navigation.navigate('ProductDetail', { product: variant, switchTab })}
+            isAdmin={isAdmin}
+            onEdit={onEdit}
+            onDelete={onDelete}
           />
         ))}
       </View>
     </View>
   );
-}
+});
 
 /* ─────────────────────────────────────────────────────────── */
 /*  Home Screen                                                */
 /* ─────────────────────────────────────────────────────────── */
 export default function HomeScreen({ navigation, switchTab }) {
-  const [products, setProducts]     = useState([]);
-  const [search, setSearch]         = useState('');
+  const [search, setSearch]           = useState('');
   const [selectedCat, setSelectedCat] = useState('All');
-  const [sortBy, setSortBy]         = useState('default');
-  const [loading, setLoading]       = useState(true);
+  const [sortBy, setSortBy]           = useState('default');
 
+  const { products, loading, removeProduct } = useAppData();
   const { addToCart }     = useCart();
   const { user, isAdmin } = useAuth();
+  const { showToast }     = useToast();
   const { width }         = useWindowDimensions();
   const isWeb             = Platform.OS === 'web';
 
@@ -171,20 +189,39 @@ export default function HomeScreen({ navigation, switchTab }) {
   // imgH proportional, capped at 280px
   const imgH = cardW < 120 ? 88 : Math.min(Math.round(cardW * 0.62), 280);
 
-  useEffect(() => {
-    if (IS_DEMO) { setProducts(DEMO_PRODUCTS); setLoading(false); return; }
-    const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
-    const unsub = onSnapshot(q, snap => {
-      setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setLoading(false);
-    });
-    return unsub;
-  }, []);
-
   const handleAdd = useCallback((item) => {
     if (item.inStock === false) return;
     addToCart(item);
   }, [addToCart]);
+
+  const handleEdit = useCallback((item) => {
+    if (switchTab) switchTab('AddProduct', item);
+    else navigation.navigate('AddItem', { product: item });
+  }, [switchTab, navigation]);
+
+  const handleDelete = useCallback((item) => {
+    const doDelete = async () => {
+      if (IS_DEMO) {
+        removeProduct(item.id);
+        showToast(`"${item.name}" deleted`, 'success');
+        return;
+      }
+      try {
+        await deleteDoc(doc(db, 'products', item.id));
+        const paths = item.imagePaths?.length ? item.imagePaths : (item.imagePath ? [item.imagePath] : []);
+        for (const p of paths) await deleteObject(ref(storage, p)).catch(() => {});
+        showToast(`"${item.name}" deleted`, 'success');
+      } catch { showToast('Delete nahi ho saka', 'error'); }
+    };
+    if (Platform.OS === 'web') {
+      if (window.confirm(`"${item.name}" permanently delete karein?`)) doDelete();
+    } else {
+      Alert.alert('Delete?', `"${item.name}" permanently delete ho jaega`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: doDelete },
+      ]);
+    }
+  }, [showToast, removeProduct]);
 
   const catCount = (cat) =>
     cat === 'All' ? products.length : products.filter(p => p.category === cat).length;
@@ -223,9 +260,14 @@ export default function HomeScreen({ navigation, switchTab }) {
               </Text>
             </View>
             {isAdmin && (
-              <TouchableOpacity style={s.manageBtn} onPress={() => navigation.navigate('Admin')}>
-                <Text style={s.manageBtnTxt}>⚙️  Manage Products</Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity style={s.addBtn} onPress={() => switchTab ? switchTab('AddProduct', null) : navigation.navigate('AddItem', { product: null })}>
+                  <Text style={s.addBtnTxt}>＋ Add Product</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={s.manageBtn} onPress={() => switchTab ? switchTab('Inventory') : navigation.navigate('Admin')}>
+                  <Text style={s.manageBtnTxt}>⚙️  Inventory</Text>
+                </TouchableOpacity>
+              </View>
             )}
           </View>
         )}
@@ -327,19 +369,28 @@ export default function HomeScreen({ navigation, switchTab }) {
 
   const EmptyComp = (
     <View style={s.center}>
-      <Text style={{ fontSize: 52 }}>🔍</Text>
-      <Text style={s.emptyTitle}>Koi product nahi mila</Text>
-      <Text style={s.emptyTxt}>Search ya category change karein</Text>
-      <TouchableOpacity style={s.resetBtn} onPress={() => { setSearch(''); setSelectedCat('All'); }}>
-        <Text style={s.resetBtnTxt}>Reset</Text>
-      </TouchableOpacity>
+      <Text style={{ fontSize: 52 }}>{isAdmin ? '📦' : '🔍'}</Text>
+      <Text style={s.emptyTitle}>{isAdmin && !search && selectedCat === 'All' ? 'Koi product nahi hai' : 'Koi product nahi mila'}</Text>
+      <Text style={s.emptyTxt}>{isAdmin && !search && selectedCat === 'All' ? 'Pehla product add karein' : 'Search ya category change karein'}</Text>
+      {isAdmin && !search && selectedCat === 'All' ? (
+        <TouchableOpacity
+          style={s.resetBtn}
+          onPress={() => switchTab ? switchTab('AddProduct', null) : navigation.navigate('AddItem', { product: null })}
+        >
+          <Text style={s.resetBtnTxt}>＋ Add New Product</Text>
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity style={s.resetBtn} onPress={() => { setSearch(''); setSelectedCat('All'); }}>
+          <Text style={s.resetBtnTxt}>Reset</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
   if (loading) {
     return (
       <View style={s.root}>
-        <Toolbar />
+        {Toolbar()}
         <View style={s.center}>
           <ActivityIndicator size="large" color={C.primary} />
           <Text style={s.loadTxt}>Loading products...</Text>
@@ -348,21 +399,31 @@ export default function HomeScreen({ navigation, switchTab }) {
     );
   }
 
-  const groupProps = { navigation, onAdd: handleAdd, switchTab, cardW, imgH };
+  const groupProps = { navigation, onAdd: handleAdd, switchTab, cardW, imgH, isAdmin, onEdit: handleEdit, onDelete: handleDelete };
 
   /* ── WEB ── */
   if (isWeb) {
     return (
       <View style={s.root}>
-        <Toolbar />
+        {Toolbar()}
         <View style={s.webCatalog}>
           {ResultsRow}
           {groups.length === 0
             ? EmptyComp
             : groups.map(g => <ProductGroup key={g.id} group={g} {...groupProps} />)
           }
-          <View style={{ height: 40 }} />
+          <View style={{ height: 80 }} />
         </View>
+        {isAdmin && (
+          <TouchableOpacity
+            style={s.fab}
+            onPress={() => switchTab ? switchTab('AddProduct', null) : navigation.navigate('AddItem', { product: null })}
+            activeOpacity={0.85}
+          >
+            <Text style={s.fabIcon}>＋</Text>
+            <Text style={s.fabLabel}>Add Item</Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
   }
@@ -370,21 +431,34 @@ export default function HomeScreen({ navigation, switchTab }) {
   /* ── NATIVE MOBILE ── */
   return (
     <View style={s.root}>
-      <Toolbar />
+      {Toolbar()}
       <View style={s.catalogArea}>
         <FlatList
+          style={{ flex: 1 }}
           data={groups}
           keyExtractor={g => g.id}
           renderItem={({ item: g }) => <ProductGroup group={g} {...groupProps} />}
           ListHeaderComponent={ResultsRow}
           ListEmptyComponent={EmptyComp}
-          contentContainerStyle={{ paddingBottom: 40, paddingTop: 4 }}
+          contentContainerStyle={{ paddingBottom: 100, paddingTop: 4 }}
           showsVerticalScrollIndicator
-          removeClippedSubviews={false}
-          maxToRenderPerBatch={10}
-          windowSize={8}
+          removeClippedSubviews
+          initialNumToRender={6}
+          maxToRenderPerBatch={8}
+          windowSize={5}
+          updateCellsBatchingPeriod={50}
         />
       </View>
+      {isAdmin && (
+        <TouchableOpacity
+          style={s.fab}
+          onPress={() => switchTab ? switchTab('AddProduct', null) : navigation.navigate('AddItem', { product: null })}
+          activeOpacity={0.85}
+        >
+          <Text style={s.fabIcon}>＋</Text>
+          <Text style={s.fabLabel}>Add Item</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -394,7 +468,12 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#eef2f9' },
 
   /* ── Toolbar ── */
-  toolbar: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e4eaf5' },
+  toolbar: {
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e4eaf5',
+    paddingTop: Platform.OS === 'ios' ? 50 : Platform.OS === 'android' ? 28 : 0,
+  },
 
   desktopTopBar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -403,6 +482,30 @@ const s = StyleSheet.create({
   },
   desktopTitle: { fontSize: 18, fontWeight: '800', color: C.text },
   desktopSub:   { fontSize: 12, color: C.textLight, marginTop: 2 },
+  addBtn:       { backgroundColor: C.primary, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
+  addBtnTxt:    { color: '#fff', fontSize: 12, fontWeight: '700' },
+
+  /* Floating Add Button */
+  fab: {
+    position: 'absolute',
+    bottom: Platform.OS === 'web' ? 24 : 90,
+    right: 20,
+    backgroundColor: C.primary,
+    borderRadius: 30,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    shadowColor: C.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+    zIndex: 999,
+  },
+  fabIcon:  { color: '#fff', fontSize: 20, fontWeight: '800', lineHeight: 22 },
+  fabLabel: { color: '#fff', fontSize: 14, fontWeight: '700' },
   manageBtn:    { backgroundColor: '#eff6ff', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8, borderWidth: 1, borderColor: '#bfdbfe' },
   manageBtnTxt: { color: C.primary, fontSize: 12, fontWeight: '700' },
 
@@ -436,7 +539,7 @@ const s = StyleSheet.create({
 
   /* ── Catalog areas ── */
   webCatalog:  { flex: 1, minHeight: 0, overflowY: 'scroll', overflowX: 'hidden' },
-  catalogArea: { flex: 1, overflow: 'hidden' },
+  catalogArea: { flex: 1 },
 
   /* ── Results row ── */
   resultsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 4 },
@@ -503,6 +606,7 @@ const vs = StyleSheet.create({
     transform: [{ translateY: -2 }],
   },
   cardOos:  { opacity: 0.55 },
+  adminMenu: { position: 'absolute', top: 4, right: 4, zIndex: 10 },
   imgWrap:  { width: '100%', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
   img:      { width: '100%', height: '100%', position: 'absolute' },
   oosDim:   { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.38)', justifyContent: 'center', alignItems: 'center' },
