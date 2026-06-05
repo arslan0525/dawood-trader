@@ -91,7 +91,7 @@ const VariantCard = memo(function VariantCard({ item, onAdd, onPress, cardW, img
       <View style={{ padding: bodyPad, alignItems: 'center' }}>
         <Text style={[vs.unit, { fontSize }]} numberOfLines={2}>{item.unit || 'piece'}</Text>
 
-        {isAdmin && editingPrice ? (
+        {editingPrice ? (
           <View style={vs.priceEditRow}>
             <TextInput
               style={[vs.priceEditInput, { fontSize: priceSize }]}
@@ -109,13 +109,11 @@ const VariantCard = memo(function VariantCard({ item, onAdd, onPress, cardW, img
               <Text style={vs.priceCancelTxt}>✕</Text>
             </TouchableOpacity>
           </View>
-        ) : isAdmin ? (
+        ) : (
           <TouchableOpacity onPress={startEdit} style={vs.priceEditableRow}>
             <Text style={[vs.price, { fontSize: priceSize }]}>Rs.{item.price?.toLocaleString()}</Text>
             <Text style={vs.priceEditIcon}>✏️</Text>
           </TouchableOpacity>
-        ) : (
-          <Text style={[vs.price, { fontSize: priceSize }]}>Rs.{item.price?.toLocaleString()}</Text>
         )}
         <TouchableOpacity
           style={[vs.btn, !inStock && vs.btnOff, { paddingVertical: btnPadV }]}
