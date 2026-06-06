@@ -109,6 +109,28 @@ export default function AdminScreen({ navigation, switchTab, editProduct }) {
     } catch { showToast('Price save nahi ho saka', 'error'); }
   };
 
+  const handleDeleteNonOG = async () => {
+    const toDelete = products.filter(p => p.name !== 'OG Cola');
+    if (toDelete.length === 0) { showToast('Sirf OG Cola products hain already!', 'success'); return; }
+    const confirm = Platform.OS === 'web'
+      ? window.confirm(`${toDelete.length} products delete honge — sirf OG Cola rahega. Confirm?`)
+      : await new Promise(resolve => Alert.alert('Confirm?', `${toDelete.length} products delete honge`, [
+          { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+          { text: 'Delete', style: 'destructive', onPress: () => resolve(true) },
+        ]));
+    if (!confirm) return;
+    showToast('Deleting...', 'info');
+    let deleted = 0;
+    for (const p of toDelete) {
+      try {
+        if (IS_DEMO) { removeProduct(p.id); }
+        else { await deleteDoc(doc(db, 'products', p.id)); }
+        deleted++;
+      } catch {}
+    }
+    showToast(`${deleted} products delete ho gaye!`, 'success');
+  };
+
   const handleStockChange = (item, delta) => {
     const current = getStock(item.id, item.stock ?? 0);
     const newQty = Math.max(0, current + delta);
@@ -246,16 +268,21 @@ export default function AdminScreen({ navigation, switchTab, editProduct }) {
           </TouchableOpacity>
         )}
         <Text style={[styles.headerTitle, isWeb && styles.headerTitleWeb]}>📦 Inventory</Text>
-        <TouchableOpacity
-          style={styles.addBtnHeader}
-          onPress={() => {
-            if (editProduct) editProduct(null);
-            else if (switchTab) switchTab('AddProduct', null);
-            else navigation.navigate('AddItem', { product: null });
-          }}
-        >
-          <Text style={styles.addBtnHeaderText}>+ Add Product</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <TouchableOpacity style={styles.cleanupBtn} onPress={handleDeleteNonOG}>
+            <Text style={styles.cleanupBtnTxt}>🗑️ OG Only</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.addBtnHeader}
+            onPress={() => {
+              if (editProduct) editProduct(null);
+              else if (switchTab) switchTab('AddProduct', null);
+              else navigation.navigate('AddItem', { product: null });
+            }}
+          >
+            <Text style={styles.addBtnHeaderText}>+ Add Product</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Search bar */}
@@ -338,6 +365,8 @@ const styles = StyleSheet.create({
   headerTitleWeb: { color: C.text },
   addBtnHeader:   { backgroundColor: C.primary, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
   addBtnHeaderText:{ color: '#fff', fontSize: 13, fontWeight: '700' },
+  cleanupBtn:     { backgroundColor: '#fee2e2', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: '#fecaca' },
+  cleanupBtnTxt:  { color: '#b91c1c', fontSize: 12, fontWeight: '700' },
 
   demoBanner: { backgroundColor: '#fffbeb', borderBottomWidth: 1, borderColor: '#fde68a', paddingVertical: 8, paddingHorizontal: 16 },
   demoText:   { color: '#92400e', fontSize: 12, textAlign: 'center', fontWeight: '600' },
