@@ -8,7 +8,6 @@ import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
 import { useAuth, ADMIN_EMAIL } from '../context/AuthContext';
-import { C } from '../constants/theme';
 
 const FEATURES = [
   { icon: '📦', text: 'Inventory & Stock Management' },
@@ -19,24 +18,17 @@ const FEATURES = [
   { icon: '📊', text: 'Business Dashboard' },
 ];
 
-const STATS = [
-  { value: '20+', label: 'Products' },
-  { value: '7',   label: 'Routes'   },
-  { value: '100%', label: 'Digital' },
-];
-
 export default function LoginScreen({ navigation }) {
-  const [step,     setStep]     = useState('role');   // 'role' | 'form'
-  const [role,     setRole]     = useState(null);     // 'owner' | 'salesman'
+  const [step,     setStep]     = useState('role');
+  const [role,     setRole]     = useState(null);
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading,  setLoading]  = useState(false);
 
   const { IS_DEMO, demoLogin, overrideRole } = useAuth();
-  const { width, height }      = useWindowDimensions();
-  const isSplit                = width >= 860;
-  const isMobile               = width < 480;
+  const { width } = useWindowDimensions();
+  const isSplit   = width >= 860;
 
   const emailRef    = useRef(null);
   const passwordRef = useRef(null);
@@ -44,7 +36,7 @@ export default function LoginScreen({ navigation }) {
   const selectRole = (r) => {
     setRole(r);
     setStep('form');
-    setTimeout(() => emailRef.current?.focus(), 300);
+    setTimeout(() => emailRef.current?.focus(), 400);
   };
 
   const handleLogin = async () => {
@@ -55,343 +47,297 @@ export default function LoginScreen({ navigation }) {
     setLoading(true);
     try {
       const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
-      const u = cred.user;
+      const u    = cred.user;
 
-      // Verify + apply role
       if (role === 'owner') {
-        const isLegacyAdmin = u.email === ADMIN_EMAIL;
-        if (isLegacyAdmin) {
+        if (u.email === ADMIN_EMAIL) {
           overrideRole('owner');
         } else {
-          const snap = await getDoc(doc(db, 'users', u.uid));
-          const firestoreRole = snap.exists() ? snap.data().role : 'salesman';
-          if (firestoreRole !== 'owner') {
-            await signOut(auth);
-            Alert.alert(
-              'Access Denied',
-              'Aap Owner nahi hain. Salesman ke tor pe login karein.',
-              [{ text: 'OK', onPress: () => setStep('role') }]
-            );
-            return;
+          try {
+            const snap = await getDoc(doc(db, 'users', u.uid));
+            const r    = snap.exists() ? snap.data().role : 'salesman';
+            if (r !== 'owner') {
+              await signOut(auth);
+              Alert.alert('Access Denied', 'Aap Owner nahi hain. Salesman ke tor pe login karein.', [
+                { text: 'OK', onPress: () => { setStep('role'); setEmail(''); setPassword(''); } },
+              ]);
+              return;
+            }
+            overrideRole('owner');
+          } catch {
+            overrideRole('owner'); // Firestore check fail — let AuthContext decide
           }
-          overrideRole('owner');
         }
       } else {
         overrideRole('salesman');
       }
-      // AuthContext onAuthStateChanged will navigate to main app
     } catch (e) {
-      if (e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') {
+      const code = e?.code || '';
+      if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
         Alert.alert('Login Failed', 'Email ya password galat hai');
+      } else if (code === 'auth/too-many-requests') {
+        Alert.alert('Login Failed', 'Bahut zyada koshishein — kuch waqt ke baad dobara try karein');
+      } else if (code === 'auth/network-request-failed') {
+        Alert.alert('Login Failed', 'Internet connection check karein');
       } else {
-        Alert.alert('Login Failed', 'Dobara koshish karein');
+        Alert.alert('Login Failed', 'Login nahi ho saka — dobara koshish karein');
       }
     } finally {
       setLoading(false);
     }
   };
 
-  /* ── Left brand panel ─────────────────────────────────── */
-  const BrandPanel = () => (
+  // ── Brand panel (desktop left) — static, no state ─────────
+  const brandPanel = isSplit ? (
     <View style={s.brandPanel}>
-      <View style={s.circle1} /><View style={s.circle2} />
-      <View style={s.circle3} /><View style={s.circle4} />
+      <View style={s.c1} /><View style={s.c2} /><View style={s.c3} />
       <View style={s.brandContent}>
         <View style={s.brandLogoRow}>
-          <View style={s.brandIconWrap}><Text style={{ fontSize: 26 }}>🛒</Text></View>
+          <View style={s.brandIcon}><Text style={{ fontSize: 26 }}>🛒</Text></View>
           <View>
             <Text style={s.brandName}>Dawood Trader</Text>
             <Text style={s.brandSub}>Distribution Management</Text>
           </View>
         </View>
         <Text style={s.brandHeadline}>Professional Business Software for Pakistani Distributors</Text>
-        <View style={s.statsRow}>
-          {STATS.map(st => (
-            <View key={st.label} style={s.statItem}>
-              <Text style={s.statValue}>{st.value}</Text>
-              <Text style={s.statLabel}>{st.label}</Text>
-            </View>
-          ))}
-        </View>
-        <View style={s.featureList}>
-          {FEATURES.map(f => (
-            <View key={f.text} style={s.featureRow}>
-              <View style={s.featureIcon}><Text style={{ fontSize: 15 }}>{f.icon}</Text></View>
-              <Text style={s.featureText}>{f.text}</Text>
-            </View>
-          ))}
-        </View>
+        {FEATURES.map(f => (
+          <View key={f.text} style={s.featRow}>
+            <View style={s.featIcon}><Text style={{ fontSize: 14 }}>{f.icon}</Text></View>
+            <Text style={s.featTxt}>{f.text}</Text>
+          </View>
+        ))}
         <View style={s.brandFooter}>
           <Text style={s.brandFooterTxt}>🇵🇰  Made by Arslan Shahani</Text>
         </View>
       </View>
     </View>
-  );
+  ) : null;
 
-  /* ── Role selection step ──────────────────────────────── */
-  const RoleStep = () => (
-    <View style={s.roleStepWrap}>
-      {!isSplit && (
-        <View style={s.mobileLogoWrap}>
-          <View style={s.mobileLogoBg}>
-            <Text style={{ fontSize: 36 }}>🛒</Text>
-          </View>
-          <Text style={s.mobileAppName}>Dawood Trader</Text>
-          <Text style={s.mobileAppSub}>Distribution Management System</Text>
-        </View>
-      )}
-
-      <View style={s.card}>
-        <Text style={s.roleHeading}>Assalam o Alaikum! 👋</Text>
-        <Text style={s.roleSubHeading}>Aap kaun hain?</Text>
-        <Text style={s.roleDesc}>Apna role select karein</Text>
-
-        <View style={s.roleCardsRow}>
-          <TouchableOpacity
-            style={s.roleCard}
-            onPress={() => selectRole('owner')}
-            activeOpacity={0.82}
-          >
-            <View style={[s.roleCardIcon, { backgroundColor: '#1a3a8f15' }]}>
-              <Text style={{ fontSize: 36 }}>👑</Text>
-            </View>
-            <Text style={s.roleCardLabel}>Owner</Text>
-            <Text style={s.roleCardDesc}>Full access — products, orders, reports, customers</Text>
-            <View style={[s.roleCardBadge, { backgroundColor: '#1a3a8f' }]}>
-              <Text style={s.roleCardBadgeTxt}>Admin</Text>
-            </View>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={s.roleCard}
-            onPress={() => selectRole('salesman')}
-            activeOpacity={0.82}
-          >
-            <View style={[s.roleCardIcon, { backgroundColor: '#15803d15' }]}>
-              <Text style={{ fontSize: 36 }}>🧑‍💼</Text>
-            </View>
-            <Text style={s.roleCardLabel}>Salesman</Text>
-            <Text style={s.roleCardDesc}>Orders, recovery aur payments karna</Text>
-            <View style={[s.roleCardBadge, { backgroundColor: '#15803d' }]}>
-              <Text style={s.roleCardBadgeTxt}>Sales</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity style={s.registerRow} onPress={() => navigation.navigate('Signup')}>
-          <Text style={s.registerTxt}>Naya account? <Text style={s.registerLink}>Register karein</Text></Text>
-        </TouchableOpacity>
-      </View>
-
-      {!isSplit && <Text style={s.mobileFooter}>🇵🇰  Made by Arslan Shahani</Text>}
+  // ── Mobile logo ────────────────────────────────────────────
+  const mobileLogo = !isSplit ? (
+    <View style={s.mobileLogoWrap}>
+      <View style={s.mobileLogoBox}><Text style={{ fontSize: 34 }}>🛒</Text></View>
+      <Text style={s.mobileAppName}>Dawood Trader</Text>
+      <Text style={s.mobileAppSub}>Distribution Management System</Text>
     </View>
-  );
+  ) : null;
 
-  /* ── Login form step ──────────────────────────────────── */
-  const FormStep = () => (
-    <View style={s.formStepWrap}>
-      {!isSplit && (
-        <View style={s.mobileLogoWrap}>
-          <View style={s.mobileLogoBg}>
-            <Text style={{ fontSize: 36 }}>🛒</Text>
-          </View>
-          <Text style={s.mobileAppName}>Dawood Trader</Text>
-          <Text style={s.mobileAppSub}>Distribution Management System</Text>
-        </View>
-      )}
+  return (
+    <View style={[s.root, isSplit && s.rootSplit]}>
+      {brandPanel}
 
-      <View style={s.card}>
-        {/* Back + role badge */}
-        <View style={s.formTopRow}>
-          <TouchableOpacity style={s.backBtn} onPress={() => setStep('role')} activeOpacity={0.7}>
-            <Text style={s.backBtnTxt}>← Wapas</Text>
-          </TouchableOpacity>
-          <View style={[s.rolePill, role === 'owner' ? s.rolePillOwner : s.rolePillSales]}>
-            <Text style={s.rolePillTxt}>{role === 'owner' ? '👑 Owner' : '🧑‍💼 Salesman'}</Text>
-          </View>
-        </View>
-
-        <Text style={s.welcomeTxt}>Welcome back 👋</Text>
-        <Text style={s.headingTxt}>Login karein</Text>
-
-        {/* Email */}
-        <View style={s.fieldWrap}>
-          <Text style={s.fieldLabel}>Email Address</Text>
-          <View style={s.inputBox}>
-            <Text style={s.inputIcon}>✉️</Text>
-            <TextInput
-              ref={emailRef}
-              style={s.input}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="aapki@email.com"
-              placeholderTextColor="#b0b8c9"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              returnKeyType="next"
-              onSubmitEditing={() => passwordRef.current?.focus()}
-              blurOnSubmit={false}
-            />
-          </View>
-        </View>
-
-        {/* Password */}
-        <View style={s.fieldWrap}>
-          <Text style={s.fieldLabel}>Password</Text>
-          <View style={s.inputBox}>
-            <Text style={s.inputIcon}>🔒</Text>
-            <TextInput
-              ref={passwordRef}
-              style={[s.input, { flex: 1 }]}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="••••••••"
-              placeholderTextColor="#b0b8c9"
-              secureTextEntry={!showPass}
-              autoCapitalize="none"
-              returnKeyType="done"
-              onSubmitEditing={handleLogin}
-            />
-            <TouchableOpacity onPress={() => setShowPass(v => !v)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ padding: 4 }}>
-              <Text style={{ fontSize: 18 }}>{showPass ? '👁️' : '🙈'}</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Login button */}
-        <TouchableOpacity
-          style={[s.loginBtn, role === 'owner' ? s.loginBtnOwner : s.loginBtnSales, loading && { opacity: 0.75 }]}
-          onPress={handleLogin}
-          disabled={loading}
-          activeOpacity={0.88}
-        >
-          {loading
-            ? <><ActivityIndicator color="#fff" size="small" /><Text style={[s.loginBtnTxt, { marginLeft: 10 }]}>Please wait...</Text></>
-            : <Text style={s.loginBtnTxt}>{role === 'owner' ? '👑 Owner Login →' : '🧑‍💼 Salesman Login →'}</Text>
-          }
-        </TouchableOpacity>
-      </View>
-
-      {!isSplit && <Text style={s.mobileFooter}>🇵🇰  Made by Arslan Shahani</Text>}
-    </View>
-  );
-
-  /* ── Form panel wrapper ───────────────────────────────── */
-  const FormPanel = () => (
-    <KeyboardAvoidingView style={s.formPanel} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView
-        contentContainerStyle={[s.formScroll, { minHeight: isSplit ? undefined : height }]}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={s.formSide}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
       >
-        <View style={[s.formInner, isMobile && { padding: 20 }]}>
-          {step === 'role' ? <RoleStep /> : <FormStep />}
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        <ScrollView
+          contentContainerStyle={s.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {mobileLogo}
+
+          <View style={s.card}>
+
+            {/* ── STEP 1: Role selection ── */}
+            {step === 'role' && (
+              <>
+                <Text style={s.greeting}>Assalam o Alaikum! 👋</Text>
+                <Text style={s.roleQ}>Aap kaun hain?</Text>
+                <Text style={s.roleHint}>Apna role select karein</Text>
+
+                <View style={s.roleRow}>
+                  <TouchableOpacity style={s.roleCard} onPress={() => selectRole('owner')} activeOpacity={0.82}>
+                    <View style={[s.roleEmoji, { backgroundColor: '#1a3a8f12' }]}>
+                      <Text style={{ fontSize: 34 }}>👑</Text>
+                    </View>
+                    <Text style={s.roleLabel}>Owner</Text>
+                    <Text style={s.roleDesc}>Full access — products, orders, reports</Text>
+                    <View style={[s.roleBadge, { backgroundColor: '#1a3a8f' }]}>
+                      <Text style={s.roleBadgeTxt}>Admin</Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity style={s.roleCard} onPress={() => selectRole('salesman')} activeOpacity={0.82}>
+                    <View style={[s.roleEmoji, { backgroundColor: '#15803d12' }]}>
+                      <Text style={{ fontSize: 34 }}>🧑‍💼</Text>
+                    </View>
+                    <Text style={s.roleLabel}>Salesman</Text>
+                    <Text style={s.roleDesc}>Orders, recovery aur payments</Text>
+                    <View style={[s.roleBadge, { backgroundColor: '#15803d' }]}>
+                      <Text style={s.roleBadgeTxt}>Sales</Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity style={s.regRow} onPress={() => navigation.navigate('Signup')}>
+                  <Text style={s.regTxt}>Naya account? <Text style={s.regLink}>Register karein</Text></Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {/* ── STEP 2: Login form ── */}
+            {step === 'form' && (
+              <>
+                <View style={s.formTop}>
+                  <TouchableOpacity onPress={() => { setStep('role'); setEmail(''); setPassword(''); }} style={s.backBtn}>
+                    <Text style={s.backTxt}>← Wapas</Text>
+                  </TouchableOpacity>
+                  <View style={[s.pill, role === 'owner' ? s.pillOwner : s.pillSales]}>
+                    <Text style={s.pillTxt}>{role === 'owner' ? '👑 Owner' : '🧑‍💼 Salesman'}</Text>
+                  </View>
+                </View>
+
+                <Text style={s.formTitle}>Login karein</Text>
+
+                <Text style={s.label}>Email</Text>
+                <View style={s.inputWrap}>
+                  <Text style={s.inputIcon}>✉️</Text>
+                  <TextInput
+                    ref={emailRef}
+                    style={s.input}
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="aapki@email.com"
+                    placeholderTextColor="#b0b8c9"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    returnKeyType="next"
+                    onSubmitEditing={() => passwordRef.current?.focus()}
+                    blurOnSubmit={false}
+                    editable={!loading}
+                  />
+                </View>
+
+                <Text style={s.label}>Password</Text>
+                <View style={s.inputWrap}>
+                  <Text style={s.inputIcon}>🔒</Text>
+                  <TextInput
+                    ref={passwordRef}
+                    style={[s.input, { flex: 1 }]}
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder="••••••••"
+                    placeholderTextColor="#b0b8c9"
+                    secureTextEntry={!showPass}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    returnKeyType="done"
+                    onSubmitEditing={handleLogin}
+                    editable={!loading}
+                  />
+                  <TouchableOpacity onPress={() => setShowPass(v => !v)} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }} style={{ padding: 6 }}>
+                    <Text style={{ fontSize: 18 }}>{showPass ? '👁️' : '🙈'}</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity
+                  style={[s.loginBtn, role === 'owner' ? s.btnOwner : s.btnSales, loading && s.btnDisabled]}
+                  onPress={handleLogin}
+                  disabled={loading}
+                  activeOpacity={0.85}
+                >
+                  {loading
+                    ? <><ActivityIndicator color="#fff" size="small" /><Text style={[s.loginBtnTxt, { marginLeft: 10 }]}>Please wait...</Text></>
+                    : <Text style={s.loginBtnTxt}>{role === 'owner' ? '👑  Owner Login  →' : '🧑‍💼  Salesman Login  →'}</Text>
+                  }
+                </TouchableOpacity>
+              </>
+            )}
+
+          </View>
+
+          {!isSplit && (
+            <Text style={s.footer}>🇵🇰  Made by Arslan Shahani</Text>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
-
-  if (isSplit) {
-    return (
-      <View style={s.splitRoot}>
-        <BrandPanel />
-        <FormPanel />
-      </View>
-    );
-  }
-
-  return <View style={s.mobileRoot}><FormPanel /></View>;
 }
 
 const s = StyleSheet.create({
-  splitRoot: { flex: 1, flexDirection: 'row', backgroundColor: '#f0f4ff' },
-  mobileRoot: { flex: 1, backgroundColor: '#f0f4ff' },
+  root:      { flex: 1, backgroundColor: '#f0f4ff' },
+  rootSplit: { flexDirection: 'row' },
 
   /* Brand panel */
-  brandPanel:    { width: '43%', backgroundColor: '#1a3a8f', justifyContent: 'center', overflow: 'hidden', position: 'relative' },
-  circle1: { position: 'absolute', width: 400, height: 400, borderRadius: 200, backgroundColor: 'rgba(255,255,255,0.05)', top: -120, right: -120 },
-  circle2: { position: 'absolute', width: 280, height: 280, borderRadius: 140, backgroundColor: 'rgba(255,255,255,0.04)', bottom: -60, left: -80 },
-  circle3: { position: 'absolute', width: 180, height: 180, borderRadius: 90,  backgroundColor: 'rgba(99,179,237,0.1)', top: '38%', right: -50 },
-  circle4: { position: 'absolute', width: 100, height: 100, borderRadius: 50,  backgroundColor: 'rgba(255,255,255,0.06)', bottom: '25%', right: 40 },
-  brandContent:  { paddingHorizontal: 44, paddingVertical: 40 },
-  brandLogoRow:  { flexDirection: 'row', alignItems: 'center', marginBottom: 28 },
-  brandIconWrap: { width: 52, height: 52, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', marginRight: 12, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.25)' },
-  brandName:     { color: '#fff', fontSize: 20, fontWeight: '800' },
+  brandPanel:   { width: '43%', backgroundColor: '#1a3a8f', overflow: 'hidden', position: 'relative', justifyContent: 'center' },
+  c1: { position: 'absolute', width: 380, height: 380, borderRadius: 190, backgroundColor: 'rgba(255,255,255,0.05)', top: -100, right: -100 },
+  c2: { position: 'absolute', width: 260, height: 260, borderRadius: 130, backgroundColor: 'rgba(255,255,255,0.04)', bottom: -50, left: -70 },
+  c3: { position: 'absolute', width: 160, height: 160, borderRadius: 80,  backgroundColor: 'rgba(99,179,237,0.09)', top: '40%', right: -40 },
+  brandContent:  { paddingHorizontal: 40, paddingVertical: 36 },
+  brandLogoRow:  { flexDirection: 'row', alignItems: 'center', marginBottom: 24 },
+  brandIcon:     { width: 50, height: 50, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', marginRight: 12, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.25)' },
+  brandName:     { color: '#fff', fontSize: 18, fontWeight: '800' },
   brandSub:      { color: 'rgba(255,255,255,0.5)', fontSize: 11, marginTop: 2 },
-  brandHeadline: { color: '#fff', fontSize: 20, fontWeight: '700', lineHeight: 30, marginBottom: 24, opacity: 0.92 },
-  statsRow:  { flexDirection: 'row', gap: 16, marginBottom: 28 },
-  statItem:  { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
-  statValue: { color: '#fff', fontSize: 20, fontWeight: '800' },
-  statLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 10, marginTop: 2, fontWeight: '600' },
-  featureList: { gap: 10, marginBottom: 28 },
-  featureRow:  { flexDirection: 'row', alignItems: 'center' },
-  featureIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
-  featureText: { color: 'rgba(255,255,255,0.82)', fontSize: 13, fontWeight: '500' },
-  brandFooter:    { paddingTop: 20, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.12)' },
-  brandFooterTxt: { color: 'rgba(255,255,255,0.45)', fontSize: 12, fontWeight: '500' },
+  brandHeadline: { color: '#fff', fontSize: 18, fontWeight: '700', lineHeight: 28, marginBottom: 20, opacity: 0.9 },
+  featRow:       { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  featIcon:      { width: 34, height: 34, borderRadius: 9, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
+  featTxt:       { color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: '500' },
+  brandFooter:   { marginTop: 28, paddingTop: 18, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.12)' },
+  brandFooterTxt:{ color: 'rgba(255,255,255,0.4)', fontSize: 11 },
 
-  /* Form panel */
-  formPanel:  { flex: 1, backgroundColor: '#f0f4ff' },
-  formScroll: { flexGrow: 1, justifyContent: 'center' },
-  formInner:  { padding: 32, maxWidth: 480, alignSelf: 'center', width: '100%' },
+  /* Form side */
+  formSide: { flex: 1 },
+  scroll:   { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 32 },
 
   /* Mobile logo */
-  mobileLogoWrap: { alignItems: 'center', paddingTop: 40, paddingBottom: 20 },
-  mobileLogoBg:   { width: 90, height: 90, borderRadius: 24, backgroundColor: '#1a3a8f', justifyContent: 'center', alignItems: 'center', marginBottom: 12, shadowColor: '#1a3a8f', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.35, shadowRadius: 16, elevation: 10 },
-  mobileAppName:  { fontSize: 22, fontWeight: '800', color: '#1a1a2e', marginBottom: 4 },
-  mobileAppSub:   { fontSize: 11, color: '#7a8599', textAlign: 'center' },
-  mobileFooter:   { textAlign: 'center', color: '#9aa3b5', fontSize: 11, marginTop: 20, paddingBottom: 16 },
+  mobileLogoWrap: { alignItems: 'center', marginBottom: 24 },
+  mobileLogoBox:  { width: 80, height: 80, borderRadius: 22, backgroundColor: '#1a3a8f', justifyContent: 'center', alignItems: 'center', marginBottom: 10, shadowColor: '#1a3a8f', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 14, elevation: 8 },
+  mobileAppName:  { fontSize: 20, fontWeight: '800', color: '#1a1a2e' },
+  mobileAppSub:   { fontSize: 11, color: '#7a8599', marginTop: 3 },
 
   /* Card */
   card: {
-    backgroundColor: '#fff', borderRadius: 24, padding: 28,
-    shadowColor: '#1a3a8f', shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.09, shadowRadius: 24, elevation: 8,
-    borderWidth: 1, borderColor: 'rgba(26,58,143,0.07)',
+    backgroundColor: '#fff', borderRadius: 20, padding: 24,
+    shadowColor: '#1a3a8f', shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08, shadowRadius: 20, elevation: 6,
+    maxWidth: 440, alignSelf: 'center', width: '100%',
   },
 
   /* Role step */
-  roleStepWrap:  {},
-  formStepWrap:  {},
-  roleHeading:   { fontSize: 22, fontWeight: '800', color: '#1a1a2e', marginBottom: 4 },
-  roleSubHeading:{ fontSize: 16, fontWeight: '700', color: '#3d4757', marginBottom: 4 },
-  roleDesc:      { fontSize: 13, color: '#9aa3b5', marginBottom: 22 },
-
-  roleCardsRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
-  roleCard: {
-    flex: 1, borderWidth: 2, borderColor: '#e8edf5', borderRadius: 18,
-    padding: 18, alignItems: 'center', backgroundColor: '#f8faff',
-  },
-  roleCardIcon:  { width: 72, height: 72, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  roleCardLabel: { fontSize: 16, fontWeight: '800', color: '#1a1a2e', marginBottom: 6 },
-  roleCardDesc:  { fontSize: 11, color: '#7a8599', textAlign: 'center', lineHeight: 15, marginBottom: 12 },
-  roleCardBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-  roleCardBadgeTxt: { color: '#fff', fontSize: 10, fontWeight: '700' },
-
-  registerRow: { alignItems: 'center', marginTop: 4 },
-  registerTxt: { fontSize: 13, color: '#7a8599' },
-  registerLink:{ color: '#1a3a8f', fontWeight: '700' },
+  greeting: { fontSize: 20, fontWeight: '800', color: '#1a1a2e', marginBottom: 4 },
+  roleQ:    { fontSize: 15, fontWeight: '700', color: '#3d4757', marginBottom: 4 },
+  roleHint: { fontSize: 12, color: '#9aa3b5', marginBottom: 20 },
+  roleRow:  { flexDirection: 'row', gap: 12, marginBottom: 18 },
+  roleCard: { flex: 1, borderWidth: 1.5, borderColor: '#e2e8f0', borderRadius: 16, padding: 14, alignItems: 'center', backgroundColor: '#f8faff' },
+  roleEmoji:{ width: 64, height: 64, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
+  roleLabel:{ fontSize: 14, fontWeight: '800', color: '#1a1a2e', marginBottom: 5 },
+  roleDesc: { fontSize: 10, color: '#7a8599', textAlign: 'center', lineHeight: 14, marginBottom: 10 },
+  roleBadge:{ paddingHorizontal: 10, paddingVertical: 3, borderRadius: 20 },
+  roleBadgeTxt: { color: '#fff', fontSize: 9, fontWeight: '700' },
+  regRow:   { alignItems: 'center', marginTop: 6 },
+  regTxt:   { fontSize: 13, color: '#7a8599' },
+  regLink:  { color: '#1a3a8f', fontWeight: '700' },
 
   /* Form step */
-  formTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  backBtn:    { paddingVertical: 6, paddingHorizontal: 2 },
-  backBtnTxt: { fontSize: 13, color: '#7a8599', fontWeight: '600' },
-  rolePill:   { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20 },
-  rolePillOwner: { backgroundColor: '#1a3a8f' },
-  rolePillSales: { backgroundColor: '#15803d' },
-  rolePillTxt:   { color: '#fff', fontSize: 12, fontWeight: '700' },
+  formTop:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  backBtn:   { paddingVertical: 4 },
+  backTxt:   { fontSize: 13, color: '#7a8599', fontWeight: '600' },
+  pill:      { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  pillOwner: { backgroundColor: '#1a3a8f' },
+  pillSales: { backgroundColor: '#15803d' },
+  pillTxt:   { color: '#fff', fontSize: 11, fontWeight: '700' },
+  formTitle: { fontSize: 22, fontWeight: '800', color: '#1a1a2e', marginBottom: 18 },
+  label:     { fontSize: 12, fontWeight: '600', color: '#3d4757', marginBottom: 6 },
+  inputWrap: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#f8faff', borderRadius: 12,
+    borderWidth: 1.5, borderColor: '#dce3f0',
+    paddingHorizontal: 12, marginBottom: 14,
+  },
+  inputIcon: { fontSize: 15, marginRight: 8 },
+  input:     {
+    flex: 1, paddingVertical: 13, fontSize: 15, color: '#1a1a2e',
+    ...(Platform.OS === 'web' ? { outlineStyle: 'none' } : {}),
+  },
+  loginBtn:    { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', borderRadius: 13, paddingVertical: 15, marginTop: 6, shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 6 },
+  btnOwner:    { backgroundColor: '#1a3a8f', shadowColor: '#1a3a8f' },
+  btnSales:    { backgroundColor: '#15803d', shadowColor: '#15803d' },
+  btnDisabled: { opacity: 0.65 },
+  loginBtnTxt: { color: '#fff', fontSize: 15, fontWeight: '800' },
 
-  welcomeTxt: { fontSize: 14, color: '#7a8599', marginBottom: 4 },
-  headingTxt: { fontSize: 24, fontWeight: '800', color: '#1a1a2e', marginBottom: 20 },
-
-  fieldWrap:  { marginBottom: 16 },
-  fieldLabel: { fontSize: 13, fontWeight: '600', color: '#3d4757', marginBottom: 8 },
-  inputBox:   { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8faff', borderRadius: 12, borderWidth: 1.5, borderColor: '#dce3f0', paddingHorizontal: 14, paddingVertical: Platform.OS === 'web' ? 4 : 0 },
-  inputIcon:  { fontSize: 16, marginRight: 10 },
-  input:      { flex: 1, paddingVertical: 13, fontSize: 15, color: '#1a1a2e', ...(Platform.OS === 'web' ? { outlineStyle: 'none' } : {}) },
-
-  loginBtn:       { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', borderRadius: 14, paddingVertical: 16, marginTop: 8, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 14, elevation: 8 },
-  loginBtnOwner:  { backgroundColor: '#1a3a8f', shadowColor: '#1a3a8f' },
-  loginBtnSales:  { backgroundColor: '#15803d', shadowColor: '#15803d' },
-  loginBtnTxt:    { color: '#fff', fontSize: 15, fontWeight: '800', letterSpacing: 0.3 },
+  footer: { textAlign: 'center', color: '#9aa3b5', fontSize: 11, marginTop: 20 },
 });
