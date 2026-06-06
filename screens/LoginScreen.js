@@ -4,7 +4,7 @@ import {
   KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
   ScrollView, TextInput, useWindowDimensions,
 } from 'react-native';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
 import { useAuth, ADMIN_EMAIL } from '../context/AuthContext';
@@ -66,7 +66,7 @@ export default function LoginScreen({ navigation }) {
           const snap = await getDoc(doc(db, 'users', u.uid));
           const firestoreRole = snap.exists() ? snap.data().role : 'salesman';
           if (firestoreRole !== 'owner') {
-            await auth.signOut();
+            await signOut(auth);
             Alert.alert(
               'Access Denied',
               'Aap Owner nahi hain. Salesman ke tor pe login karein.',
