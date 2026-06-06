@@ -418,7 +418,7 @@ export default function OrderHistoryScreen({ switchTab, viewCustomer, navigation
       )}
 
       {/* List */}
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={oh.list} showsVerticalScrollIndicator>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={oh.list} showsVerticalScrollIndicator={false}>
         {filtered.length === 0 ? (
           <View style={oh.empty}>
             <Text style={{ fontSize: 52 }}>📋</Text>

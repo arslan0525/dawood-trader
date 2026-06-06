@@ -8,8 +8,10 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
   document.body.style.cssText = 'height:100%;overflow:hidden;margin:0;padding:0;';
   const css = document.createElement('style');
   css.textContent = `
-    ::-webkit-scrollbar { display: none; width: 0; height: 0; }
-    * { scrollbar-width: none; -ms-overflow-style: none; }
+    ::-webkit-scrollbar { width: 0 !important; height: 0 !important; background: transparent !important; }
+    ::-webkit-scrollbar-track { display: none !important; }
+    ::-webkit-scrollbar-thumb { display: none !important; }
+    * { scrollbar-width: none !important; -ms-overflow-style: none !important; }
     [data-scroll], div[style*="overflow-y: scroll"] { overflow-y: scroll !important; }
     div[style*="overflow-y: auto"], div[style*="overflow-y: scroll"] {
       -webkit-overflow-scrolling: touch;

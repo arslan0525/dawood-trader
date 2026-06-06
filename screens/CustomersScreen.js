@@ -376,7 +376,7 @@ export default function CustomersScreen({ switchTab, viewCustomer }) {
       )}
 
       {/* List */}
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={cs.list} showsVerticalScrollIndicator>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={cs.list} showsVerticalScrollIndicator={false}>
         {filtered.length === 0 ? (
           <View style={cs.empty}>
             <Text style={{ fontSize: 52 }}>👥</Text>

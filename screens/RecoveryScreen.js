@@ -286,7 +286,7 @@ export default function RecoveryScreen({ switchTab, viewCustomer, navigation }) 
         )}
       </View>
 
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={rc.list} showsVerticalScrollIndicator>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={rc.list} showsVerticalScrollIndicator={false}>
 
         {/* OUTSTANDING tab */}
         {tab === 'outstanding' && (
