@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   TextInput, Modal, Platform, Alert, Linking, useWindowDimensions,
@@ -216,6 +216,33 @@ export default function OrderHistoryScreen({ switchTab, viewCustomer, navigation
   const [editPaid, setEditPaid]           = useState('');
   const [savingEdit, setSavingEdit]       = useState(false);
 
+  const filterScrollRef = useRef(null);
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const el = filterScrollRef.current;
+    if (!el) return;
+    let startX = 0, startY = 0, startScrollLeft = 0;
+    const onTouchStart = e => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      startScrollLeft = el.scrollLeft;
+    };
+    const onTouchMove = e => {
+      const dx = e.touches[0].clientX - startX;
+      const dy = e.touches[0].clientY - startY;
+      if (Math.abs(dx) > Math.abs(dy) + 3) {
+        e.preventDefault();
+        el.scrollLeft = startScrollLeft - dx;
+      }
+    };
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+    };
+  }, []);
+
   const filtered = useMemo(() => {
     let list = [...orders];
     if (routeFilter) list = list.filter(o => o.routeId === routeFilter);
@@ -337,37 +364,41 @@ export default function OrderHistoryScreen({ switchTab, viewCustomer, navigation
       </View>
 
       {/* Filters */}
-      <View dataSet={{ hscroll: '1' }} style={[oh.filterBar, oh.filterRow, Platform.OS === 'web' && { overflow: 'scroll' }]}>
-        {/* Status filter */}
-        {['all', 'unpaid', 'partial', 'paid'].map(s => (
-          <TouchableOpacity
-            key={s}
-            style={[oh.filterChip, statusFilter === s && oh.filterChipActive]}
-            onPress={() => setStatusFilter(s)}
-          >
-            <Text style={[oh.filterChipTxt, statusFilter === s && oh.filterChipTxtActive]}>
-              {s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
-            </Text>
+      {Platform.OS === 'web' ? (
+        <div ref={filterScrollRef} style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', overflowX: 'auto', overflowY: 'hidden', padding: '7px 12px', gap: 6, alignItems: 'center', backgroundColor: '#fff', borderBottom: '1px solid #e2e8f0', flexShrink: 0, WebkitOverflowScrolling: 'touch', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+          {['all', 'unpaid', 'partial', 'paid'].map(s => (
+            <TouchableOpacity key={s} style={[oh.filterChip, statusFilter === s && oh.filterChipActive]} onPress={() => setStatusFilter(s)}>
+              <Text style={[oh.filterChipTxt, statusFilter === s && oh.filterChipTxtActive]}>{s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}</Text>
+            </TouchableOpacity>
+          ))}
+          <View style={oh.filterDivider} />
+          <TouchableOpacity style={[oh.filterChip, routeFilter === 0 && oh.filterChipActive]} onPress={() => setRouteFilter(0)}>
+            <Text style={[oh.filterChipTxt, routeFilter === 0 && oh.filterChipTxtActive]}>All Routes</Text>
           </TouchableOpacity>
-        ))}
-        <View style={oh.filterDivider} />
-        {/* Route filter */}
-        <TouchableOpacity
-          style={[oh.filterChip, routeFilter === 0 && oh.filterChipActive]}
-          onPress={() => setRouteFilter(0)}
-        >
-          <Text style={[oh.filterChipTxt, routeFilter === 0 && oh.filterChipTxtActive]}>All Routes</Text>
-        </TouchableOpacity>
-        {ROUTES.map(r => (
-          <TouchableOpacity
-            key={r.id}
-            style={[oh.filterChip, routeFilter === r.id && { backgroundColor: r.color, borderColor: r.textColor + '44' }]}
-            onPress={() => setRouteFilter(r.id)}
-          >
-            <Text style={[oh.filterChipTxt, routeFilter === r.id && { color: r.textColor, fontWeight: '700' }]}>{r.name}</Text>
+          {ROUTES.map(r => (
+            <TouchableOpacity key={r.id} style={[oh.filterChip, routeFilter === r.id && { backgroundColor: r.color, borderColor: r.textColor + '44' }]} onPress={() => setRouteFilter(r.id)}>
+              <Text style={[oh.filterChipTxt, routeFilter === r.id && { color: r.textColor, fontWeight: '700' }]}>{r.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </div>
+      ) : (
+        <View style={[oh.filterBar, oh.filterRow]}>
+          {['all', 'unpaid', 'partial', 'paid'].map(s => (
+            <TouchableOpacity key={s} style={[oh.filterChip, statusFilter === s && oh.filterChipActive]} onPress={() => setStatusFilter(s)}>
+              <Text style={[oh.filterChipTxt, statusFilter === s && oh.filterChipTxtActive]}>{s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}</Text>
+            </TouchableOpacity>
+          ))}
+          <View style={oh.filterDivider} />
+          <TouchableOpacity style={[oh.filterChip, routeFilter === 0 && oh.filterChipActive]} onPress={() => setRouteFilter(0)}>
+            <Text style={[oh.filterChipTxt, routeFilter === 0 && oh.filterChipTxtActive]}>All Routes</Text>
           </TouchableOpacity>
-        ))}
-      </View>
+          {ROUTES.map(r => (
+            <TouchableOpacity key={r.id} style={[oh.filterChip, routeFilter === r.id && { backgroundColor: r.color, borderColor: r.textColor + '44' }]} onPress={() => setRouteFilter(r.id)}>
+              <Text style={[oh.filterChipTxt, routeFilter === r.id && { color: r.textColor, fontWeight: '700' }]}>{r.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
 
       {/* Summary row */}
       {filtered.length > 0 && (

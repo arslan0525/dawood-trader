@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   TextInput, Modal, Alert, Platform, ActivityIndicator,
@@ -177,6 +177,33 @@ export default function CustomersScreen({ switchTab, viewCustomer }) {
   const [editItem, setEditItem]     = useState(null);
   const [saving, setSaving]         = useState(false);
 
+  const routeScrollRef = useRef(null);
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const el = routeScrollRef.current;
+    if (!el) return;
+    let startX = 0, startY = 0, startScrollLeft = 0;
+    const onTouchStart = e => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      startScrollLeft = el.scrollLeft;
+    };
+    const onTouchMove = e => {
+      const dx = e.touches[0].clientX - startX;
+      const dy = e.touches[0].clientY - startY;
+      if (Math.abs(dx) > Math.abs(dy) + 3) {
+        e.preventDefault();
+        el.scrollLeft = startScrollLeft - dx;
+      }
+    };
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+    };
+  }, []);
+
   const filtered = useMemo(() => {
     let list = customers;
     if (routeFilter) list = list.filter(c => c.routeId === routeFilter);
@@ -275,46 +302,56 @@ export default function CustomersScreen({ switchTab, viewCustomer }) {
         </View>
       </View>
 
-      {/* Route cards — scroll karo left/right */}
-      <View style={cs.routeCardsWrap}>
-        <View dataSet={{ hscroll: '1' }} style={[cs.routeCardsRow, Platform.OS === 'web' && { overflow: 'scroll' }]}>
-          {/* All Routes card */}
-          <TouchableOpacity
-            style={[cs.routeCard, routeFilter === 0 && cs.routeCardActive]}
-            onPress={() => setRouteFilter(0)}
-            activeOpacity={0.8}
-          >
+      {/* Route cards — scroll left/right */}
+      {Platform.OS === 'web' ? (
+        <div ref={routeScrollRef} style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', overflowX: 'auto', overflowY: 'hidden', padding: 10, gap: 8, backgroundColor: '#f0f4fa', borderBottom: '1px solid #e2e8f0', flexShrink: 0, WebkitOverflowScrolling: 'touch', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+          <TouchableOpacity style={[cs.routeCard, routeFilter === 0 && cs.routeCardActive]} onPress={() => setRouteFilter(0)} activeOpacity={0.8}>
             <Text style={cs.routeCardIcon}>🗺️</Text>
             <Text style={[cs.routeCardName, routeFilter === 0 && cs.routeCardNameActive]}>Sab Routes</Text>
             <Text style={[cs.routeCardCount, routeFilter === 0 && cs.routeCardCountActive]}>{customers.length} customers</Text>
           </TouchableOpacity>
-
           {ROUTES.map(r => {
             const count = customers.filter(c => c.routeId === r.id).length;
-            const outstanding = orders
-              .filter(o => o.routeId === r.id)
-              .reduce((s, o) => s + (o.remaining || 0), 0);
+            const outstanding = orders.filter(o => o.routeId === r.id).reduce((s, o) => s + (o.remaining || 0), 0);
             const isActive = routeFilter === r.id;
             return (
-              <TouchableOpacity
-                key={r.id}
-                style={[cs.routeCard, isActive && { backgroundColor: r.color, borderColor: r.textColor + '55' }]}
-                onPress={() => setRouteFilter(r.id)}
-                activeOpacity={0.8}
-              >
+              <TouchableOpacity key={r.id} style={[cs.routeCard, isActive && { backgroundColor: r.color, borderColor: r.textColor + '55' }]} onPress={() => setRouteFilter(r.id)} activeOpacity={0.8}>
                 <Text style={cs.routeCardIcon}>📍</Text>
                 <Text style={[cs.routeCardName, isActive && { color: r.textColor }]}>{r.name}</Text>
                 <Text style={[cs.routeCardCount, isActive && { color: r.textColor }]}>{count} customers</Text>
                 {outstanding > 0 && (
-                  <Text style={[cs.routeCardDebt, isActive && { color: r.textColor }]}>
-                    Rs.{outstanding >= 1000 ? (outstanding / 1000).toFixed(0) + 'K' : outstanding} due
-                  </Text>
+                  <Text style={[cs.routeCardDebt, isActive && { color: r.textColor }]}>Rs.{outstanding >= 1000 ? (outstanding / 1000).toFixed(0) + 'K' : outstanding} due</Text>
                 )}
               </TouchableOpacity>
             );
           })}
+        </div>
+      ) : (
+        <View style={cs.routeCardsWrap}>
+          <View style={cs.routeCardsRow}>
+            <TouchableOpacity style={[cs.routeCard, routeFilter === 0 && cs.routeCardActive]} onPress={() => setRouteFilter(0)} activeOpacity={0.8}>
+              <Text style={cs.routeCardIcon}>🗺️</Text>
+              <Text style={[cs.routeCardName, routeFilter === 0 && cs.routeCardNameActive]}>Sab Routes</Text>
+              <Text style={[cs.routeCardCount, routeFilter === 0 && cs.routeCardCountActive]}>{customers.length} customers</Text>
+            </TouchableOpacity>
+            {ROUTES.map(r => {
+              const count = customers.filter(c => c.routeId === r.id).length;
+              const outstanding = orders.filter(o => o.routeId === r.id).reduce((s, o) => s + (o.remaining || 0), 0);
+              const isActive = routeFilter === r.id;
+              return (
+                <TouchableOpacity key={r.id} style={[cs.routeCard, isActive && { backgroundColor: r.color, borderColor: r.textColor + '55' }]} onPress={() => setRouteFilter(r.id)} activeOpacity={0.8}>
+                  <Text style={cs.routeCardIcon}>📍</Text>
+                  <Text style={[cs.routeCardName, isActive && { color: r.textColor }]}>{r.name}</Text>
+                  <Text style={[cs.routeCardCount, isActive && { color: r.textColor }]}>{count} customers</Text>
+                  {outstanding > 0 && (
+                    <Text style={[cs.routeCardDebt, isActive && { color: r.textColor }]}>Rs.{outstanding >= 1000 ? (outstanding / 1000).toFixed(0) + 'K' : outstanding} due</Text>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </View>
-      </View>
+      )}
 
       {/* List */}
       <ScrollView style={{ flex: 1 }} contentContainerStyle={cs.list} showsVerticalScrollIndicator>
