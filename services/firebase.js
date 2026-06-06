@@ -1,7 +1,12 @@
 import { Platform } from 'react-native';
 import { initializeApp } from 'firebase/app';
 import { initializeAuth, getReactNativePersistence, browserLocalPersistence } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  memoryLocalCache,
+} from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -24,5 +29,15 @@ export const auth = initializeAuth(app, {
     : getReactNativePersistence(AsyncStorage),
 });
 
-export const db      = getFirestore(app);
+// Firestore with offline cache — web uses IndexedDB, native uses memory
+export const db = Platform.OS === 'web'
+  ? initializeFirestore(app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager(),
+      }),
+    })
+  : initializeFirestore(app, {
+      localCache: memoryLocalCache(),
+    });
+
 export const storage = getStorage(app);

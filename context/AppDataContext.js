@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import {
   collection, onSnapshot, addDoc, updateDoc, deleteDoc,
-  doc, query, orderBy, serverTimestamp, writeBatch, getDocs,
+  doc, query, orderBy, limit, serverTimestamp, writeBatch, getDocs,
 } from 'firebase/firestore';
 import { db, IS_DEMO } from '../services/firebase';
 import {
@@ -114,9 +114,10 @@ export function AppDataProvider({ children }) {
       }
     };
 
+    const LIMITS = { products: 500, customers: 500, orders: 300, payments: 500 };
     const listenCol = (colName, setter, sortField = 'createdAt') => {
-      const q = query(collection(db, colName), orderBy(sortField, 'desc'));
-      const unsub = onSnapshot(q, async snap => {
+      const q = query(collection(db, colName), orderBy(sortField, 'desc'), limit(LIMITS[colName] || 300));
+      const unsub = onSnapshot(q, { includeMetadataChanges: false }, async snap => {
         if (colName === 'products' && snap.empty && !productSeeded) {
           productSeeded = true;
           await seedProducts();
