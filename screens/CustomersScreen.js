@@ -75,6 +75,23 @@ function CustomerModal({ visible, initial, routes, onSave, onClose, saving }) {
 
   React.useEffect(() => { setForm(initial || EMPTY_FORM); }, [initial]);
 
+  const routeChipRef = React.useRef(null);
+  React.useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const el = routeChipRef.current;
+    if (!el) return;
+    let startX = 0, startY = 0, startScrollLeft = 0;
+    const onTouchStart = e => { startX = e.touches[0].clientX; startY = e.touches[0].clientY; startScrollLeft = el.scrollLeft; };
+    const onTouchMove = e => {
+      const dx = e.touches[0].clientX - startX;
+      const dy = e.touches[0].clientY - startY;
+      if (Math.abs(dx) > Math.abs(dy) + 3) { e.preventDefault(); el.scrollLeft = startScrollLeft - dx; }
+    };
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    return () => { el.removeEventListener('touchstart', onTouchStart); el.removeEventListener('touchmove', onTouchMove); };
+  }, [visible]);
+
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   // ⚠️ Called as function {inputField({...})} — NOT as <InputField /> component
@@ -122,24 +139,23 @@ function CustomerModal({ visible, initial, routes, onSave, onClose, saving }) {
 
               <View style={cs.fieldWrap}>
                 <Text style={cs.fieldLabel}>{t('routeNo')} *</Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  keyboardShouldPersistTaps="handled"
-                  contentContainerStyle={cs.routeGrid}
-                >
-                  {routes.map(r => (
-                    <TouchableOpacity
-                      key={r.id}
-                      style={[cs.routeChip, form.routeId === r.id && { backgroundColor: r.color, borderColor: r.textColor + '66' }]}
-                      onPress={() => set('routeId', r.id)}
-                    >
-                      <Text style={[cs.routeChipTxt, form.routeId === r.id && { color: r.textColor, fontWeight: '700' }]}>
-                        {r.name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
+                {Platform.OS === 'web' ? (
+                  <div ref={routeChipRef} style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', overflowX: 'auto', overflowY: 'hidden', gap: 8, paddingBottom: 4, WebkitOverflowScrolling: 'touch', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+                    {routes.map(r => (
+                      <TouchableOpacity key={r.id} style={[cs.routeChip, form.routeId === r.id && { backgroundColor: r.color, borderColor: r.textColor + '66' }]} onPress={() => set('routeId', r.id)}>
+                        <Text style={[cs.routeChipTxt, form.routeId === r.id && { color: r.textColor, fontWeight: '700' }]}>{r.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </div>
+                ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={cs.routeGrid}>
+                    {routes.map(r => (
+                      <TouchableOpacity key={r.id} style={[cs.routeChip, form.routeId === r.id && { backgroundColor: r.color, borderColor: r.textColor + '66' }]} onPress={() => set('routeId', r.id)}>
+                        <Text style={[cs.routeChipTxt, form.routeId === r.id && { color: r.textColor, fontWeight: '700' }]}>{r.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                )}
               </View>
             </ScrollView>
 
