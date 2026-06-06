@@ -11,11 +11,6 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
     ::-webkit-scrollbar { display: none; width: 0; height: 0; }
     * { scrollbar-width: none; -ms-overflow-style: none; }
     [data-scroll], div[style*="overflow-y: scroll"] { overflow-y: scroll !important; }
-    div[style*="overflow-x: auto"] {
-      -webkit-overflow-scrolling: touch !important;
-      touch-action: pan-x !important;
-      overscroll-behavior-x: contain;
-    }
     div[style*="overflow-y: auto"], div[style*="overflow-y: scroll"] {
       -webkit-overflow-scrolling: touch;
       overscroll-behavior-y: contain;
