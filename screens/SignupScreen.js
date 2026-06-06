@@ -14,7 +14,7 @@ export default function SignupScreen({ navigation }) {
   const [email, setEmail]       = useState('');
   const [phone, setPhone]       = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole]         = useState('salesman'); // 'owner' | 'salesman'
+  const role = 'salesman'; // always salesman — role selected at login time
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading]   = useState(false);
   const { IS_DEMO, demoLogin, saveUserRole } = useAuth();
@@ -132,36 +132,6 @@ export default function SignupScreen({ navigation }) {
                   </TouchableOpacity>
                 }
               />
-            </View>
-
-            {/* Role Selection */}
-            <View style={styles.field}>
-              <Text style={styles.label}>Aap kaun hain?</Text>
-              <View style={styles.roleRow}>
-                <TouchableOpacity
-                  style={[styles.roleBtn, role === 'owner' && styles.roleBtnActive]}
-                  onPress={() => setRole('owner')}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.roleIcon}>👑</Text>
-                  <Text style={[styles.roleLabel, role === 'owner' && styles.roleLabelActive]}>Owner</Text>
-                  <Text style={[styles.roleDesc, role === 'owner' && styles.roleDescActive]}>
-                    Full access — products, orders, customers
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.roleBtn, role === 'salesman' && styles.roleBtnActive]}
-                  onPress={() => setRole('salesman')}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.roleIcon}>🧑‍💼</Text>
-                  <Text style={[styles.roleLabel, role === 'salesman' && styles.roleLabelActive]}>Salesman</Text>
-                  <Text style={[styles.roleDesc, role === 'salesman' && styles.roleDescActive]}>
-                    Orders, recovery, payments only
-                  </Text>
-                </TouchableOpacity>
-              </View>
             </View>
 
             <TouchableOpacity

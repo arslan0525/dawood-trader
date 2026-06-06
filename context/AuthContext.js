@@ -164,13 +164,16 @@ export function AuthProvider({ children }) {
   const isAdmin  = userRole === 'owner' || user?.email === ADMIN_EMAIL;
   const avatarUrl = avatar || user?.photoURL || null;
 
+  // Called from LoginScreen after role verification to immediately apply role
+  const overrideRole = (r) => setUserRole(r);
+
   return (
     <AuthContext.Provider value={{
       user, loading, isAdmin, userRole, IS_DEMO,
       magicSent, sendMagicLink, resetMagicSent,
       demoLogin, demoLogout,
       updateDisplayName, changePassword, updateAvatar,
-      saveUserRole,
+      saveUserRole, overrideRole,
       avatarUrl,
     }}>
       {children}
