@@ -9,13 +9,18 @@ import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { db, storage, IS_DEMO } from '../services/firebase';
-import { C, CAT, UNIT_TYPES } from '../constants/theme';
+import { C, CAT } from '../constants/theme';
 import InputRow from '../components/InputRow';
 import CropModal from '../components/CropModal';
 import { useToast } from '../context/ToastContext';
 import { useAppData } from '../context/AppDataContext';
 
 const CATEGORIES = ['Cold Drinks', 'Masala', 'Pickles', 'Pasta', 'Grocery', 'Snacks', 'Household', 'Bricks'];
+const QUICK_UNITS = [
+  '250ml', '300ml', '345ml', '500ml', '1 Liter', '1.5 Liter', '2 Liter', 'Half Liter',
+  '100g', '200g', '250g', '500g', '1kg', '5kg',
+  'piece', 'packet', 'dozen', 'box',
+];
 const MAX_IMAGES = 5;
 
 async function compressImage(uri) {
@@ -74,6 +79,7 @@ export default function AddItemScreen({ route, navigation }) {
   const skuRef    = useRef(null);
   const weightRef = useRef(null);
   const descRef   = useRef(null);
+  const unitRef   = useRef(null);
 
   /* ── Scroll to top when form mounts ── */
   useEffect(() => {
@@ -611,27 +617,31 @@ export default function AddItemScreen({ route, navigation }) {
             </View>
           </View>
 
-          {/* ── Unit Type ── */}
-          <SectionHeader title="Unit Type" />
+          {/* ── Size / Unit ── */}
+          <SectionHeader title="Size / Unit" />
           <View style={st.card}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={st.unitRow}>
-                {UNIT_TYPES.map((u) => (
-                  <TouchableOpacity
-                    key={u}
-                    style={[st.unitChip, unit === u && st.unitChipActive]}
-                    onPress={() => setUnit(u)}
-                  >
-                    <Text style={[st.unitChipTxt, unit === u && st.unitChipTxtActive]}>
-                      {u}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </ScrollView>
-            <Text style={st.selectedUnit}>
-              Selected: <Text style={{ color: C.primary, fontWeight: '700' }}>{unit}</Text>
-            </Text>
+            <Text style={st.label}>Apna size likhein</Text>
+            <InputRow
+              inputRef={unitRef}
+              value={unit}
+              onChangeText={setUnit}
+              placeholder="e.g. 345ml, 1 Liter, 500g, piece..."
+              autoCapitalize="none"
+              returnKeyType="done"
+              style={{ marginBottom: 14 }}
+            />
+            <Text style={[st.label, { marginBottom: 8 }]}>Ya neeche se choose karein:</Text>
+            <View style={st.unitQuickRow}>
+              {QUICK_UNITS.map(u => (
+                <TouchableOpacity
+                  key={u}
+                  style={[st.unitChip, unit === u && st.unitChipActive]}
+                  onPress={() => { setUnit(u); unitRef.current?.blur(); }}
+                >
+                  <Text style={[st.unitChipTxt, unit === u && st.unitChipTxtActive]}>{u}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
 
           {/* ── Additional Info ── */}
@@ -756,12 +766,11 @@ const st = StyleSheet.create({
   catChip:      { width: '30%', minWidth: 90, flexDirection: 'column', alignItems: 'center', paddingVertical: 12, borderRadius: 12, borderWidth: 1.5, borderColor: C.border, backgroundColor: C.bg },
   catChipTxt:   { fontSize: 11, fontWeight: '500', color: C.textLight, textAlign: 'center' },
 
-  unitRow:          { flexDirection: 'row', paddingVertical: 4 },
-  unitChip:         { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1.5, borderColor: C.border, backgroundColor: C.bg, marginRight: 8 },
+  unitQuickRow:     { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  unitChip:         { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1.5, borderColor: C.border, backgroundColor: C.bg },
   unitChipActive:   { backgroundColor: C.primaryLight, borderColor: C.primary },
   unitChipTxt:      { fontSize: 12, fontWeight: '500', color: C.textLight },
   unitChipTxtActive:{ color: C.primary, fontWeight: '700' },
-  selectedUnit:     { fontSize: 12, color: C.textLight, marginTop: 10 },
 
   availRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 4 },
 
