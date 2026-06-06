@@ -36,10 +36,15 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
     }
     [data-hscroll="1"]::-webkit-scrollbar { display: none; }
     [data-hscroll="1"] > * { flex-shrink: 0 !important; }
-    * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-    img { image-rendering: auto; will-change: auto; }
-    [role="button"], button { cursor: pointer; }
-    input, textarea { font-family: inherit; }
+    div[style*="opacity"] { transition-duration: 50ms !important; }
+    div[style*="translateZ"] { will-change: transform; }
+    * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; touch-action: manipulation; }
+    img { image-rendering: auto; }
+    [role="button"], button { cursor: pointer; user-select: none; -webkit-user-select: none; }
+    [role="button"] > *, button > * { pointer-events: none; }
+    input, textarea, select { font-family: inherit; touch-action: auto; }
+    div[data-scrollable] { touch-action: pan-y; }
+    * { -webkit-font-smoothing: antialiased; }
   `;
   document.head.appendChild(css);
 }

@@ -156,7 +156,7 @@ export default function WebLayout({ navigation }) {
   const [activeTab,      setActiveTab]      = useState('Dashboard');
   const [tabProduct,     setTabProduct]     = useState(null);
   const [viewCustomerId, setViewCustomerId] = useState(null);
-  const [mountedTabs,    setMountedTabs]    = useState(() => new Set(['Dashboard']));
+  const [mountedTabs,    setMountedTabs]    = useState(() => new Set(['Dashboard','Home','Cart','Profile','Customers','NewOrder','OrderHistory','Recovery','Inventory']));
 
   // Navigation history stack for back button
   const [navHistory, setNavHistory]   = useState(['Dashboard']);
@@ -363,7 +363,7 @@ export default function WebLayout({ navigation }) {
         <MobileBackBar canGoBack={canGoBack} onBack={goBack} activeTab={activeTab} />
 
         <View style={wl.mobileContent}>
-          {CACHED_TABS.map(tab => mountedTabs.has(tab) && (
+          {CACHED_TABS.map(tab => (
             <View key={tab} style={{ flex: 1, display: activeTab === tab ? 'flex' : 'none' }}>
               {cachedScreens[tab]}
             </View>
@@ -462,7 +462,7 @@ export default function WebLayout({ navigation }) {
           onBack={goBack}
         />
         <View style={wl.content}>
-          {CACHED_TABS.map(tab => mountedTabs.has(tab) && (
+          {CACHED_TABS.map(tab => (
             <View key={tab} style={{ flex: 1, display: activeTab === tab ? 'flex' : 'none' }}>
               {cachedScreens[tab]}
             </View>
