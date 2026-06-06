@@ -109,16 +109,20 @@ export default function AdminScreen({ navigation, switchTab, editProduct }) {
     } catch { showToast('Price save nahi ho saka', 'error'); }
   };
 
-  const handleDeleteNonOG = async () => {
-    const toDelete = products.filter(p => p.name !== 'OG Cola');
-    if (toDelete.length === 0) { showToast('Sirf OG Cola products hain already!', 'success'); return; }
-    const confirm = Platform.OS === 'web'
-      ? window.confirm(`${toDelete.length} products delete honge — sirf OG Cola rahega. Confirm?`)
-      : await new Promise(resolve => Alert.alert('Confirm?', `${toDelete.length} products delete honge`, [
-          { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-          { text: 'Delete', style: 'destructive', onPress: () => resolve(true) },
-        ]));
-    if (!confirm) return;
+  const KEEP_NAMES = new Set(['OG Cola', 'OG Lemon', 'OG Orange', 'Sprite', 'Fanta Orange']);
+
+  const handleDeleteFromMirinda = async () => {
+    const toDelete = products.filter(p => !KEEP_NAMES.has(p.name));
+    if (toDelete.length === 0) { showToast('Koi product delete karne layak nahi!', 'success'); return; }
+    const ok = Platform.OS === 'web'
+      ? window.confirm(`${toDelete.length} products delete honge.\nSirf OG Cola, OG Lemon, OG Orange, Sprite, Fanta Orange bachenge.\nConfirm?`)
+      : await new Promise(resolve => Alert.alert(
+          'Delete Confirm?',
+          `${toDelete.length} products (Mirinda se last tak) delete honge`,
+          [{ text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+           { text: 'Delete', style: 'destructive', onPress: () => resolve(true) }]
+        ));
+    if (!ok) return;
     showToast('Deleting...', 'info');
     let deleted = 0;
     for (const p of toDelete) {
@@ -269,7 +273,7 @@ export default function AdminScreen({ navigation, switchTab, editProduct }) {
         )}
         <Text style={[styles.headerTitle, isWeb && styles.headerTitleWeb]}>📦 Inventory</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <TouchableOpacity style={styles.cleanupBtn} onPress={handleDeleteNonOG}>
+          <TouchableOpacity style={styles.cleanupBtn} onPress={handleDeleteFromMirinda}>
             <Text style={styles.cleanupBtnTxt}>🗑️ OG Only</Text>
           </TouchableOpacity>
           <TouchableOpacity
