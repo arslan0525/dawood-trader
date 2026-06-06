@@ -29,7 +29,7 @@ function timeGreeting() {
 /* ─────────────────────────────────────────────────────────── */
 /*  Variant Card                                               */
 /* ─────────────────────────────────────────────────────────── */
-const VariantCard = memo(function VariantCard({ item, onAdd, onPress, cardW, imgH, isAdmin, onEdit, onDelete, onPriceEdit, onImageEdit }) {
+const VariantCard = memo(function VariantCard({ item, onAdd, onPress, cardW, imgH, isAdmin, onEdit, onDelete, onPriceEdit, onImageEdit, onRemoveStock }) {
   const cat = CAT[item.category] || CAT.default;
   const inStock = item.inStock !== false;
   const [editingPrice, setEditingPrice] = useState(false);
@@ -94,6 +94,7 @@ const VariantCard = memo(function VariantCard({ item, onAdd, onPress, cardW, img
               options={[
                 { icon: '✏️', label: 'Edit Product',   onPress: () => onEdit(item) },
                 { icon: '🗑️', label: 'Delete Product', onPress: () => onDelete(item), danger: true },
+                { icon: '📦', label: item.inStock !== false ? 'Remove from Stock' : 'Add to Stock', onPress: () => onRemoveStock(item) },
               ]}
             />
           </View>
@@ -146,7 +147,7 @@ const VariantCard = memo(function VariantCard({ item, onAdd, onPress, cardW, img
 /* ─────────────────────────────────────────────────────────── */
 /*  Product Group                                              */
 /* ─────────────────────────────────────────────────────────── */
-const ProductGroup = memo(function ProductGroup({ group, navigation, onAdd, switchTab, cardW, imgH, isAdmin, onEdit, onDelete, onPriceEdit, onImageEdit }) {
+const ProductGroup = memo(function ProductGroup({ group, navigation, onAdd, switchTab, cardW, imgH, isAdmin, onEdit, onDelete, onPriceEdit, onImageEdit, onRemoveStock }) {
   const cat = CAT[group.category] || CAT.default;
   const prices = group.variants.map(v => v.price).filter(p => typeof p === 'number');
   const lo = prices.length ? Math.min(...prices) : 0;
@@ -186,6 +187,7 @@ const ProductGroup = memo(function ProductGroup({ group, navigation, onAdd, swit
             onDelete={onDelete}
             onPriceEdit={onPriceEdit}
             onImageEdit={onImageEdit}
+            onRemoveStock={onRemoveStock}
           />
         ))}
       </View>
@@ -336,6 +338,20 @@ export default function HomeScreen({ navigation, switchTab }) {
       ]);
     }
   }, [showToast, removeProduct]);
+
+  const handleRemoveStock = useCallback(async (item) => {
+    const newStock = item.inStock !== false;
+    const label = newStock ? 'Stock se hata diya' : 'Stock mein wapas add ho gaya';
+    if (IS_DEMO) {
+      updateProductDemo(item.id, { ...item, inStock: !newStock });
+      showToast(label, 'success');
+      return;
+    }
+    try {
+      await updateDoc(doc(db, 'products', item.id), { inStock: !newStock });
+      showToast(label, 'success');
+    } catch { showToast('Update nahi ho saka', 'error'); }
+  }, [showToast, updateProductDemo]);
 
   const catCount = (cat) =>
     cat === 'All' ? products.length : products.filter(p => p.category === cat).length;
@@ -524,7 +540,7 @@ export default function HomeScreen({ navigation, switchTab }) {
     );
   }
 
-  const groupProps = { navigation, onAdd: handleAdd, switchTab, cardW, imgH, isAdmin, onEdit: handleEdit, onDelete: handleDelete, onPriceEdit: handlePriceEdit, onImageEdit: handleImageEdit };
+  const groupProps = { navigation, onAdd: handleAdd, switchTab, cardW, imgH, isAdmin, onEdit: handleEdit, onDelete: handleDelete, onPriceEdit: handlePriceEdit, onImageEdit: handleImageEdit, onRemoveStock: handleRemoveStock };
 
   /* ── WEB ── */
   if (isWeb) {

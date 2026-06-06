@@ -1,4 +1,4 @@
-import React, { useMemo, memo, useState } from 'react';
+import React, { useMemo, memo, useState, useRef, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   Platform, useWindowDimensions, TextInput, Image, Alert, ActivityIndicator,
@@ -87,6 +87,27 @@ function QuickAddProduct({ onDone }) {
   const [imageUri, setImageUri] = useState(null);
   const [saving,   setSaving]   = useState(false);
   const [done,     setDone]     = useState(false);
+
+  const unitScrollRef = useRef(null);
+  const catScrollRef  = useRef(null);
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    [unitScrollRef, catScrollRef].forEach(refObj => {
+      const el = refObj.current;
+      if (!el) return;
+      let startX = 0, startY = 0, startLeft = 0;
+      const onTS = e => { startX = e.touches[0].clientX; startY = e.touches[0].clientY; startLeft = el.scrollLeft; };
+      const onTM = e => {
+        const dx = e.touches[0].clientX - startX;
+        const dy = e.touches[0].clientY - startY;
+        if (Math.abs(dx) > Math.abs(dy) + 3) { e.preventDefault(); el.scrollLeft = startLeft - dx; }
+      };
+      const onW = e => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { e.preventDefault(); el.scrollLeft += e.deltaY; } };
+      el.addEventListener('touchstart', onTS, { passive: true });
+      el.addEventListener('touchmove',  onTM, { passive: false });
+      el.addEventListener('wheel',      onW,  { passive: false });
+    });
+  }, []);
 
   const pickPhoto = async () => {
     if (Platform.OS !== 'web') {
@@ -211,36 +232,56 @@ function QuickAddProduct({ onDone }) {
           keyboardType="numeric"
           placeholderTextColor="#94a3b8"
         />
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} nestedScrollEnabled style={{ flexShrink: 0, flex: 1 }}>
-          <View style={{ flexDirection: 'row', gap: 6, paddingVertical: 2 }}>
-            {QUNITS.map(u => (
-              <TouchableOpacity
-                key={u}
-                style={[ds.chip, unit === u && ds.chipActive]}
-                onPress={() => setUnit(u)}
-              >
-                <Text style={[ds.chipTxt, unit === u && ds.chipTxtActive]}>{u}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </ScrollView>
+        {Platform.OS === 'web' ? (
+          <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
+            <button onClick={() => unitScrollRef.current?.scrollBy({ left: -100, behavior: 'smooth' })} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 18, color: '#1a56db', padding: '0 4px', flexShrink: 0 }}>‹</button>
+            <div ref={unitScrollRef} style={{ flex: 1, display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', overflowX: 'auto', overflowY: 'hidden', gap: 6, paddingVertical: 2, WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              {QUNITS.map(u => (
+                <TouchableOpacity key={u} style={[ds.chip, unit === u && ds.chipActive]} onPress={() => setUnit(u)}>
+                  <Text style={[ds.chipTxt, unit === u && ds.chipTxtActive]}>{u}</Text>
+                </TouchableOpacity>
+              ))}
+            </div>
+            <button onClick={() => unitScrollRef.current?.scrollBy({ left: 100, behavior: 'smooth' })} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 18, color: '#1a56db', padding: '0 4px', flexShrink: 0 }}>›</button>
+          </div>
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} nestedScrollEnabled style={{ flexShrink: 0, flex: 1 }}>
+            <View style={{ flexDirection: 'row', gap: 6, paddingVertical: 2 }}>
+              {QUNITS.map(u => (
+                <TouchableOpacity key={u} style={[ds.chip, unit === u && ds.chipActive]} onPress={() => setUnit(u)}>
+                  <Text style={[ds.chipTxt, unit === u && ds.chipTxtActive]}>{u}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+        )}
       </View>
 
       {/* Category chips */}
       <Text style={ds.fieldLabel}>Category:</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} nestedScrollEnabled style={{ flexShrink: 0 }}>
-        <View style={{ flexDirection: 'row', gap: 6, paddingVertical: 4 }}>
-          {QCATS.map(c => (
-            <TouchableOpacity
-              key={c}
-              style={[ds.chip, category === c && ds.chipActive]}
-              onPress={() => setCategory(c)}
-            >
-              <Text style={[ds.chipTxt, category === c && ds.chipTxtActive]}>{c}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </ScrollView>
+      {Platform.OS === 'web' ? (
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <button onClick={() => catScrollRef.current?.scrollBy({ left: -120, behavior: 'smooth' })} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 18, color: '#1a56db', padding: '0 4px', flexShrink: 0 }}>‹</button>
+          <div ref={catScrollRef} style={{ flex: 1, display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', overflowX: 'auto', overflowY: 'hidden', gap: 6, paddingTop: 4, paddingBottom: 4, WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            {QCATS.map(c => (
+              <TouchableOpacity key={c} style={[ds.chip, category === c && ds.chipActive]} onPress={() => setCategory(c)}>
+                <Text style={[ds.chipTxt, category === c && ds.chipTxtActive]}>{c}</Text>
+              </TouchableOpacity>
+            ))}
+          </div>
+          <button onClick={() => catScrollRef.current?.scrollBy({ left: 120, behavior: 'smooth' })} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 18, color: '#1a56db', padding: '0 4px', flexShrink: 0 }}>›</button>
+        </div>
+      ) : (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} nestedScrollEnabled style={{ flexShrink: 0 }}>
+          <View style={{ flexDirection: 'row', gap: 6, paddingVertical: 4 }}>
+            {QCATS.map(c => (
+              <TouchableOpacity key={c} style={[ds.chip, category === c && ds.chipActive]} onPress={() => setCategory(c)}>
+                <Text style={[ds.chipTxt, category === c && ds.chipTxtActive]}>{c}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+      )}
 
       {/* Save button */}
       <TouchableOpacity
