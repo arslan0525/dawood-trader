@@ -235,11 +235,14 @@ export default function OrderHistoryScreen({ switchTab, viewCustomer, navigation
         el.scrollLeft = startScrollLeft - dx;
       }
     };
+    const onWheel = e => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { e.preventDefault(); el.scrollLeft += e.deltaY; } };
     el.addEventListener('touchstart', onTouchStart, { passive: true });
     el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('wheel', onWheel, { passive: false });
     return () => {
       el.removeEventListener('touchstart', onTouchStart);
       el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('wheel', onWheel);
     };
   }, []);
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   TextInput, Modal, Platform, Alert, ActivityIndicator,
@@ -123,6 +123,29 @@ export default function RecoveryScreen({ switchTab, viewCustomer, navigation }) 
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showPayModal, setShowPayModal]   = useState(false);
 
+  const routeScrollRef = useRef(null);
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const el = routeScrollRef.current;
+    if (!el) return;
+    let startX = 0, startY = 0, startScrollLeft = 0;
+    const onTouchStart = e => { startX = e.touches[0].clientX; startY = e.touches[0].clientY; startScrollLeft = el.scrollLeft; };
+    const onTouchMove = e => {
+      const dx = e.touches[0].clientX - startX;
+      const dy = e.touches[0].clientY - startY;
+      if (Math.abs(dx) > Math.abs(dy) + 3) { e.preventDefault(); el.scrollLeft = startScrollLeft - dx; }
+    };
+    const onWheel = e => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) { e.preventDefault(); el.scrollLeft += e.deltaY; } };
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('wheel', onWheel);
+    };
+  }, []);
+
   // Outstanding orders (remaining > 0)
   const outstanding = useMemo(() => {
     let list = orders.filter(o => o.remaining > 0);
@@ -234,23 +257,29 @@ export default function RecoveryScreen({ switchTab, viewCustomer, navigation }) 
             </TouchableOpacity>
           )}
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} nestedScrollEnabled style={{ flexShrink: 0 }} contentContainerStyle={{ flexDirection: 'row', gap: 6, paddingHorizontal: 12, paddingVertical: 10, alignItems: 'center' }}>
-          <TouchableOpacity
-            style={[rc.routeChip, routeFilter === 0 && rc.routeChipActive]}
-            onPress={() => setRouteFilter(0)}
-          >
-            <Text style={[rc.routeChipTxt, routeFilter === 0 && rc.routeChipTxtActive]}>All</Text>
-          </TouchableOpacity>
-          {ROUTES.map(r => (
-            <TouchableOpacity
-              key={r.id}
-              style={[rc.routeChip, routeFilter === r.id && { backgroundColor: r.color, borderColor: r.textColor + '55' }]}
-              onPress={() => setRouteFilter(r.id)}
-            >
-              <Text style={[rc.routeChipTxt, routeFilter === r.id && { color: r.textColor, fontWeight: '700' }]}>{r.name}</Text>
+        {Platform.OS === 'web' ? (
+          <div ref={routeScrollRef} style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', overflowX: 'auto', overflowY: 'hidden', gap: 6, padding: '10px 12px', alignItems: 'center', WebkitOverflowScrolling: 'touch', msOverflowStyle: 'none', scrollbarWidth: 'none', flexShrink: 0 }}>
+            <TouchableOpacity style={[rc.routeChip, routeFilter === 0 && rc.routeChipActive]} onPress={() => setRouteFilter(0)}>
+              <Text style={[rc.routeChipTxt, routeFilter === 0 && rc.routeChipTxtActive]}>All</Text>
             </TouchableOpacity>
-          ))}
-        </ScrollView>
+            {ROUTES.map(r => (
+              <TouchableOpacity key={r.id} style={[rc.routeChip, routeFilter === r.id && { backgroundColor: r.color, borderColor: r.textColor + '55' }]} onPress={() => setRouteFilter(r.id)}>
+                <Text style={[rc.routeChipTxt, routeFilter === r.id && { color: r.textColor, fontWeight: '700' }]}>{r.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </div>
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexShrink: 0 }} contentContainerStyle={{ flexDirection: 'row', gap: 6, paddingHorizontal: 12, paddingVertical: 10, alignItems: 'center' }}>
+            <TouchableOpacity style={[rc.routeChip, routeFilter === 0 && rc.routeChipActive]} onPress={() => setRouteFilter(0)}>
+              <Text style={[rc.routeChipTxt, routeFilter === 0 && rc.routeChipTxtActive]}>All</Text>
+            </TouchableOpacity>
+            {ROUTES.map(r => (
+              <TouchableOpacity key={r.id} style={[rc.routeChip, routeFilter === r.id && { backgroundColor: r.color, borderColor: r.textColor + '55' }]} onPress={() => setRouteFilter(r.id)}>
+                <Text style={[rc.routeChipTxt, routeFilter === r.id && { color: r.textColor, fontWeight: '700' }]}>{r.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={rc.list} showsVerticalScrollIndicator>
