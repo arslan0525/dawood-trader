@@ -5,6 +5,7 @@ import {
   KeyboardAvoidingView, Linking, useWindowDimensions,
 } from 'react-native';
 import { useAppData } from '../context/AppDataContext';
+import { useAuth } from '../context/AuthContext';
 import { useLang } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import { C } from '../constants/theme';
@@ -320,6 +321,7 @@ function BillModal({ visible, order, onClose, onNewOrder }) {
 // ── Main OrdersScreen ─────────────────────────────────────────
 export default function OrdersScreen({ switchTab, navigation }) {
   const { products, customers, orders, ROUTES, createOrder, getStock } = useAppData();
+  const { user } = useAuth();
   const { t } = useLang();
   const { showToast } = useToast();
   const { width } = useWindowDimensions();
@@ -418,6 +420,8 @@ export default function OrdersScreen({ switchTab, navigation }) {
         paidAmount:      paid,
         remaining:       Math.max(0, grandTotal - paid),
         note,
+        salesmanId:      user?.uid || '',
+        salesmanName:    user?.displayName || user?.email || '',
       });
       if (!order) { showToast('Order save nahi ho saka', 'error'); return; }
       setSavedOrder(order);

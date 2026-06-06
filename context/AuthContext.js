@@ -5,7 +5,8 @@ import {
   EmailAuthProvider, reauthenticateWithCredential,
   sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink,
 } from 'firebase/auth';
-import { auth, IS_DEMO } from '../services/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, db, IS_DEMO } from '../services/firebase';
 import { DEMO_USER, DEMO_ADMIN } from '../services/demoData';
 
 const AuthContext = createContext();
@@ -37,14 +38,34 @@ const MAGIC_LINK_SETTINGS = {
 
 export function AuthProvider({ children }) {
   const [user,        setUser]       = useState(null);
+  const [userRole,    setUserRole]   = useState(null); // 'owner' | 'salesman'
   const [loading,     setLoading]    = useState(true);
   const [magicSent,   setMagicSent]  = useState(false);
   const [avatar,      setAvatarState]= useState(loadAvatar);
 
+  // Fetch role from Firestore users/{uid}
+  const fetchRole = async (uid, email) => {
+    // Legacy admin email always gets owner role
+    if (email === ADMIN_EMAIL) { setUserRole('owner'); return; }
+    try {
+      const snap = await getDoc(doc(db, 'users', uid));
+      if (snap.exists()) {
+        setUserRole(snap.data().role || 'salesman');
+      } else {
+        setUserRole('salesman');
+      }
+    } catch {
+      setUserRole('salesman');
+    }
+  };
+
   useEffect(() => {
     if (IS_DEMO) {
       const saved = loadSession();
-      if (saved) setUser(saved);
+      if (saved) {
+        setUser(saved);
+        setUserRole(saved.email === ADMIN_EMAIL ? 'owner' : 'salesman');
+      }
       setLoading(false);
       return;
     }
@@ -65,8 +86,13 @@ export function AuthProvider({ children }) {
       }
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
       setUser(u);
+      if (u) {
+        await fetchRole(u.uid, u.email);
+      } else {
+        setUserRole(null);
+      }
       setLoading(false);
     });
     return unsubscribe;
@@ -75,9 +101,11 @@ export function AuthProvider({ children }) {
   // ── Demo login ────────────────────────────────────────────
   const demoLogin = (email) => {
     const u = email.trim().toLowerCase() === ADMIN_EMAIL ? DEMO_ADMIN : DEMO_USER;
-    setUser(u); saveSession(u);
+    setUser(u);
+    setUserRole(u.email === ADMIN_EMAIL ? 'owner' : 'salesman');
+    saveSession(u);
   };
-  const demoLogout = () => { setUser(null); saveSession(null); };
+  const demoLogout = () => { setUser(null); setUserRole(null); saveSession(null); };
 
   // ── Magic Link (email link auth) ──────────────────────────
   const sendMagicLink = async (email) => {
@@ -91,6 +119,17 @@ export function AuthProvider({ children }) {
     setMagicSent(true);
   };
   const resetMagicSent = () => setMagicSent(false);
+
+  // Save user role to Firestore (called from SignupScreen)
+  const saveUserRole = async (uid, role, displayName, email) => {
+    await setDoc(doc(db, 'users', uid), {
+      role,
+      displayName: displayName || '',
+      email: email || '',
+      createdAt: Date.now(),
+    });
+    setUserRole(role);
+  };
 
   // ── Profile updates ───────────────────────────────────────
   const updateDisplayName = async (newName) => {
@@ -122,15 +161,16 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const isAdmin = user?.email === ADMIN_EMAIL;
+  const isAdmin  = userRole === 'owner' || user?.email === ADMIN_EMAIL;
   const avatarUrl = avatar || user?.photoURL || null;
 
   return (
     <AuthContext.Provider value={{
-      user, loading, isAdmin, IS_DEMO,
+      user, loading, isAdmin, userRole, IS_DEMO,
       magicSent, sendMagicLink, resetMagicSent,
       demoLogin, demoLogout,
       updateDisplayName, changePassword, updateAvatar,
+      saveUserRole,
       avatarUrl,
     }}>
       {children}

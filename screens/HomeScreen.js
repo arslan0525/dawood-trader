@@ -64,22 +64,24 @@ const VariantCard = memo(function VariantCard({ item, onAdd, onPress, cardW, img
       ]}
       onPress={onPress}
     >
-      {/* Image — tap to change photo */}
+      {/* Image — tap to change photo (admin only) */}
       <TouchableOpacity
         style={[vs.imgWrap, { height: imgH, backgroundColor: cat.bg }]}
-        onPress={e => { e?.stopPropagation?.(); onImageEdit(item); }}
-        activeOpacity={0.88}
+        onPress={isAdmin ? (e => { e?.stopPropagation?.(); onImageEdit(item); }) : undefined}
+        activeOpacity={isAdmin ? 0.88 : 1}
       >
         {item.imageUrl
           ? <Image source={{ uri: item.imageUrl }} style={vs.img} resizeMode="contain" />
           : <Text style={{ fontSize: emojiSize }}>{cat.icon}</Text>
         }
-        {/* 📷 Edit badge — always visible like ✏️ on price */}
-        <View style={vs.imgEditOverlay}>
-          <View style={vs.imgEditBadge}>
-            <Text style={vs.imgEditBadgeTxt}>📷 Edit</Text>
+        {/* 📷 Edit badge — admin only */}
+        {isAdmin && (
+          <View style={vs.imgEditOverlay}>
+            <View style={vs.imgEditBadge}>
+              <Text style={vs.imgEditBadgeTxt}>📷 Edit</Text>
+            </View>
           </View>
-        </View>
+        )}
         {!inStock && (
           <View style={vs.oosDim}>
             <View style={vs.oosTag}><Text style={vs.oosTagTxt}>Out of Stock</Text></View>
@@ -105,7 +107,7 @@ const VariantCard = memo(function VariantCard({ item, onAdd, onPress, cardW, img
       <View style={{ padding: bodyPad, alignItems: 'center' }}>
         <Text style={[vs.unit, { fontSize }]} numberOfLines={2}>{item.unit || 'piece'}</Text>
 
-        {editingPrice ? (
+        {isAdmin && editingPrice ? (
           <View style={vs.priceEditRow}>
             <TextInput
               style={[vs.priceEditInput, { fontSize: priceSize }]}
@@ -123,11 +125,13 @@ const VariantCard = memo(function VariantCard({ item, onAdd, onPress, cardW, img
               <Text style={vs.priceCancelTxt}>✕</Text>
             </TouchableOpacity>
           </View>
-        ) : (
+        ) : isAdmin ? (
           <TouchableOpacity onPress={startEdit} style={vs.priceEditableRow}>
             <Text style={[vs.price, { fontSize: priceSize }]}>Rs.{item.price?.toLocaleString()}</Text>
             <Text style={vs.priceEditIcon}>✏️</Text>
           </TouchableOpacity>
+        ) : (
+          <Text style={[vs.price, { fontSize: priceSize }]}>Rs.{item.price?.toLocaleString()}</Text>
         )}
         <TouchableOpacity
           style={[vs.btn, !inStock && vs.btnOff, { paddingVertical: btnPadV }]}

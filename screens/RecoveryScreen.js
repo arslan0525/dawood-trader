@@ -5,6 +5,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useAppData } from '../context/AppDataContext';
+import { useAuth } from '../context/AuthContext';
 import { useLang } from '../context/LanguageContext';
 import { useToast } from '../context/ToastContext';
 import { C } from '../constants/theme';
@@ -15,7 +16,7 @@ function fmtDate(ts) {
 }
 function fmtCurrency(n) { return 'Rs.' + (n || 0).toLocaleString(); }
 
-function PaymentModal({ visible, order, onClose, onSuccess }) {
+function PaymentModal({ visible, order, onClose, onSuccess, user }) {
   const { addPayment } = useAppData();
   const { showToast } = useToast();
   const { t } = useLang();
@@ -32,7 +33,7 @@ function PaymentModal({ visible, order, onClose, onSuccess }) {
     if (n > order.remaining) { showToast(`Max ${fmtCurrency(order.remaining)}`, 'error'); return; }
     setSaving(true);
     try {
-      await addPayment(order.id, n, note);
+      await addPayment(order.id, n, note, user?.uid || '', user?.displayName || user?.email || '');
       showToast(t('paymentAdded'), 'success');
       onSuccess?.();
       onClose();
@@ -113,6 +114,7 @@ function PaymentModal({ visible, order, onClose, onSuccess }) {
 
 export default function RecoveryScreen({ switchTab, viewCustomer, navigation }) {
   const { orders, customers, payments, ROUTES } = useAppData();
+  const { user } = useAuth();
   const { t } = useLang();
   const { width } = useWindowDimensions();
   const isWide = width >= 768;
@@ -408,6 +410,7 @@ export default function RecoveryScreen({ switchTab, viewCustomer, navigation }) 
         order={selectedOrder}
         onClose={() => setShowPayModal(false)}
         onSuccess={() => {}}
+        user={user}
       />
     </View>
   );

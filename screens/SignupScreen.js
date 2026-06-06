@@ -14,9 +14,10 @@ export default function SignupScreen({ navigation }) {
   const [email, setEmail]       = useState('');
   const [phone, setPhone]       = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole]         = useState('salesman'); // 'owner' | 'salesman'
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading]   = useState(false);
-  const { IS_DEMO, demoLogin }  = useAuth();
+  const { IS_DEMO, demoLogin, saveUserRole } = useAuth();
 
   const nameRef     = useRef(null);
   const emailRef    = useRef(null);
@@ -37,6 +38,7 @@ export default function SignupScreen({ navigation }) {
     try {
       const { user } = await createUserWithEmailAndPassword(auth, email.trim(), password);
       await updateProfile(user, { displayName: name.trim() });
+      await saveUserRole(user.uid, role, name.trim(), email.trim());
     } catch (e) {
       if (e.code === 'auth/email-already-in-use') Alert.alert('Error', 'Yeh email pehle se registered hai');
       else Alert.alert('Error', 'Account nahi ban saka, dobara koshish karein');
@@ -132,6 +134,36 @@ export default function SignupScreen({ navigation }) {
               />
             </View>
 
+            {/* Role Selection */}
+            <View style={styles.field}>
+              <Text style={styles.label}>Aap kaun hain?</Text>
+              <View style={styles.roleRow}>
+                <TouchableOpacity
+                  style={[styles.roleBtn, role === 'owner' && styles.roleBtnActive]}
+                  onPress={() => setRole('owner')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.roleIcon}>👑</Text>
+                  <Text style={[styles.roleLabel, role === 'owner' && styles.roleLabelActive]}>Owner</Text>
+                  <Text style={[styles.roleDesc, role === 'owner' && styles.roleDescActive]}>
+                    Full access — products, orders, customers
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.roleBtn, role === 'salesman' && styles.roleBtnActive]}
+                  onPress={() => setRole('salesman')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.roleIcon}>🧑‍💼</Text>
+                  <Text style={[styles.roleLabel, role === 'salesman' && styles.roleLabelActive]}>Salesman</Text>
+                  <Text style={[styles.roleDesc, role === 'salesman' && styles.roleDescActive]}>
+                    Orders, recovery, payments only
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
             <TouchableOpacity
               style={[styles.btn, loading && { opacity: 0.72 }]}
               onPress={handleSignup}
@@ -170,6 +202,18 @@ const styles = StyleSheet.create({
   label:      { fontSize: 13, fontWeight: '600', color: C.textMid, marginBottom: 7 },
   eyeBtn:     { padding: 6 },
   eyeIcon:    { fontSize: 17 },
+
+  roleRow:    { flexDirection: 'row', gap: 10 },
+  roleBtn:    {
+    flex: 1, borderWidth: 2, borderColor: '#e2e8f0', borderRadius: 14,
+    padding: 14, alignItems: 'center', backgroundColor: '#f8fafc',
+  },
+  roleBtnActive: { borderColor: C.primary, backgroundColor: '#eff6ff' },
+  roleIcon:   { fontSize: 28, marginBottom: 6 },
+  roleLabel:  { fontSize: 14, fontWeight: '700', color: C.textMid, marginBottom: 4 },
+  roleLabelActive: { color: C.primary },
+  roleDesc:   { fontSize: 10, color: C.textLight, textAlign: 'center', lineHeight: 14 },
+  roleDescActive: { color: '#3b82f6' },
 
   btn:        { backgroundColor: C.primary, borderRadius: 10, paddingVertical: 15, alignItems: 'center', marginTop: 8, shadowColor: C.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 6 },
   btnText:    { color: '#fff', fontSize: 16, fontWeight: '700' },

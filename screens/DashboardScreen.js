@@ -6,6 +6,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { useAppData } from '../context/AppDataContext';
+import { useAuth }    from '../context/AuthContext';
 import { useLang }    from '../context/LanguageContext';
 import { C }          from '../constants/theme';
 
@@ -301,65 +302,53 @@ function QuickAddProduct({ onDone }) {
 
 export default function DashboardScreen({ switchTab }) {
   const { products, customers, orders, ROUTES, getStats } = useAppData();
+  const { user, isAdmin } = useAuth();
   const { t }    = useLang();
   const { width } = useWindowDimensions();
   const isWide    = width >= 768;
 
-  const stats = useMemo(() => getStats(products), [orders, products, getStats]);
+  // Salesman sirf apne orders dekhe; owner sab dekhe
+  const visibleOrders = useMemo(() =>
+    isAdmin ? orders : orders.filter(o => o.salesmanId === user?.uid),
+  [orders, isAdmin, user?.uid]);
 
-  const statCards = [
-    {
-      icon: '📦', label: t('totalProducts'),
-      value: products.length,
-      gradient: ['#eff6ff', '#3b82f6', '#1d4ed8'],
-      onPress: () => switchTab?.('Home'),
-    },
-    {
-      icon: '👥', label: t('totalCustomers'),
-      value: customers.length,
-      gradient: ['#f0fdf4', '#22c55e', '#15803d'],
-      onPress: () => switchTab?.('Customers'),
-    },
-    {
-      icon: '🗺️', label: t('totalRoutes'),
-      value: ROUTES.length,
-      gradient: ['#fefce8', '#eab308', '#a16207'],
-    },
-    {
-      icon: '📋', label: t('todaysOrders'),
-      value: stats.todaysOrderCount,
-      gradient: ['#faf5ff', '#a855f7', '#7e22ce'],
-      onPress: () => switchTab?.('OrderHistory'),
-    },
-    {
-      icon: '💵', label: t('todaysSales'),
-      value: fmtCurrency(stats.todaysSales),
-      gradient: ['#f0fdf4', '#10b981', '#059669'],
-      onPress: () => switchTab?.('OrderHistory'),
-    },
-    {
-      icon: '📈', label: t('monthlySales'),
-      value: fmtCurrency(stats.monthlySales),
-      gradient: ['#eff6ff', '#3b82f6', '#1d4ed8'],
-    },
-    {
-      icon: '⏳', label: t('outstandingRecovery'),
-      value: fmtCurrency(stats.outstanding),
-      gradient: stats.outstanding > 0
-        ? ['#fef2f2', '#ef4444', '#b91c1c']
-        : ['#f0fdf4', '#22c55e', '#15803d'],
-      onPress: () => switchTab?.('Recovery'),
-    },
-    {
-      icon: '⚠️', label: t('lowStock'),
-      value: stats.lowStockProducts?.length || 0,
-      gradient: stats.lowStockProducts?.length > 0
-        ? ['#fff7ed', '#f97316', '#c2410c']
-        : ['#f0fdf4', '#22c55e', '#15803d'],
-      onPress: () => switchTab?.('Inventory'),
-    },
+  const stats = useMemo(() => getStats(products), [products, getStats]);
+
+  const myStats  = useMemo(() => {
+    const now      = new Date(); now.setHours(0,0,0,0);
+    const todayTs  = now.getTime();
+    const monthTs  = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    const ts = o => o.createdAt?.seconds ? o.createdAt.seconds * 1000 : (o.createdAt || 0);
+    const todayOrders  = visibleOrders.filter(o => ts(o) >= todayTs);
+    const monthOrders  = visibleOrders.filter(o => ts(o) >= monthTs);
+    const outstanding  = visibleOrders.reduce((s, o) => s + (o.remaining || 0), 0);
+    return {
+      todaysOrderCount: todayOrders.length,
+      todaysSales:      todayOrders.reduce((s, o) => s + (o.grandTotal || 0), 0),
+      monthlySales:     monthOrders.reduce((s, o) => s + (o.grandTotal || 0), 0),
+      outstanding,
+    };
+  }, [visibleOrders]);
+
+  const ownerCards = [
+    { icon: '📦', label: t('totalProducts'),   value: products.length,          gradient: ['#eff6ff', '#3b82f6', '#1d4ed8'], onPress: () => switchTab?.('Home') },
+    { icon: '👥', label: t('totalCustomers'),  value: customers.length,         gradient: ['#f0fdf4', '#22c55e', '#15803d'], onPress: () => switchTab?.('Customers') },
+    { icon: '🗺️', label: t('totalRoutes'),     value: ROUTES.length,            gradient: ['#fefce8', '#eab308', '#a16207'] },
+    { icon: '📋', label: t('todaysOrders'),    value: myStats.todaysOrderCount,  gradient: ['#faf5ff', '#a855f7', '#7e22ce'], onPress: () => switchTab?.('OrderHistory') },
+    { icon: '💵', label: t('todaysSales'),     value: fmtCurrency(myStats.todaysSales),  gradient: ['#f0fdf4', '#10b981', '#059669'], onPress: () => switchTab?.('OrderHistory') },
+    { icon: '📈', label: t('monthlySales'),    value: fmtCurrency(myStats.monthlySales), gradient: ['#eff6ff', '#3b82f6', '#1d4ed8'] },
+    { icon: '⏳', label: t('outstandingRecovery'), value: fmtCurrency(myStats.outstanding), gradient: myStats.outstanding > 0 ? ['#fef2f2', '#ef4444', '#b91c1c'] : ['#f0fdf4', '#22c55e', '#15803d'], onPress: () => switchTab?.('Recovery') },
+    { icon: '⚠️', label: t('lowStock'),        value: stats.lowStockProducts?.length || 0, gradient: stats.lowStockProducts?.length > 0 ? ['#fff7ed', '#f97316', '#c2410c'] : ['#f0fdf4', '#22c55e', '#15803d'], onPress: () => switchTab?.('Inventory') },
   ];
 
+  const salesmanCards = [
+    { icon: '📋', label: 'Aaj ke Orders',    value: myStats.todaysOrderCount,          gradient: ['#faf5ff', '#a855f7', '#7e22ce'], onPress: () => switchTab?.('OrderHistory') },
+    { icon: '💵', label: 'Aaj ki Sales',     value: fmtCurrency(myStats.todaysSales),  gradient: ['#f0fdf4', '#10b981', '#059669'], onPress: () => switchTab?.('OrderHistory') },
+    { icon: '📈', label: 'Mahine ki Sales',  value: fmtCurrency(myStats.monthlySales), gradient: ['#eff6ff', '#3b82f6', '#1d4ed8'] },
+    { icon: '⏳', label: 'Meri Recovery',    value: fmtCurrency(myStats.outstanding),  gradient: myStats.outstanding > 0 ? ['#fef2f2', '#ef4444', '#b91c1c'] : ['#f0fdf4', '#22c55e', '#15803d'], onPress: () => switchTab?.('Recovery') },
+  ];
+
+  const statCards = isAdmin ? ownerCards : salesmanCards;
   const cols = isWide ? 4 : 2;
 
   return (
@@ -371,7 +360,9 @@ export default function DashboardScreen({ switchTab }) {
       {!isWide && (
         <View style={ds.welcomeBar}>
           <Text style={ds.welcomeTitle}>📊 {t('dashboard')}</Text>
-          <Text style={ds.welcomeSub}>Dawood Trader — Overview</Text>
+          <Text style={ds.welcomeSub}>
+            {isAdmin ? 'Dawood Trader — Overview' : `Meri Sales — ${user?.displayName || 'Salesman'}`}
+          </Text>
         </View>
       )}
 
@@ -384,8 +375,8 @@ export default function DashboardScreen({ switchTab }) {
         ))}
       </View>
 
-      {/* Quick Add Product */}
-      <QuickAddProduct onDone={() => switchTab?.('Home')} />
+      {/* Quick Add Product — sirf admin ke liye */}
+      {isAdmin && <QuickAddProduct onDone={() => switchTab?.('Home')} />}
 
       {/* Two-column layout on wide screens */}
       <View style={[ds.bottomRow, isWide && ds.bottomRowWide]}>
@@ -393,12 +384,12 @@ export default function DashboardScreen({ switchTab }) {
         {/* Recent Orders */}
         <View style={[ds.panel, isWide && { flex: 3, marginRight: 12 }]}>
           <View style={ds.panelHeader}>
-            <Text style={ds.panelTitle}>📋 {t('recentOrders')}</Text>
+            <Text style={ds.panelTitle}>📋 {isAdmin ? t('recentOrders') : 'Mere Recent Orders'}</Text>
             <TouchableOpacity onPress={() => switchTab?.('OrderHistory')}>
               <Text style={ds.panelLink}>See All →</Text>
             </TouchableOpacity>
           </View>
-          {orders.length === 0 ? (
+          {visibleOrders.length === 0 ? (
             <View style={ds.emptyBox}>
               <Text style={{ fontSize: 40 }}>📋</Text>
               <Text style={ds.emptyTxt}>{t('noOrders')}</Text>
@@ -408,7 +399,7 @@ export default function DashboardScreen({ switchTab }) {
             </View>
           ) : (
             <View style={ds.orderList}>
-              {orders.slice(0, 6).map(order => (
+              {visibleOrders.slice(0, 6).map(order => (
                 <OrderRow
                   key={order.id}
                   order={order}

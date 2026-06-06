@@ -210,6 +210,8 @@ export function AppDataProvider({ children }) {
       remaining:       Math.max(0, (data.grandTotal || 0) - (data.paidAmount || 0)),
       status:          data.paidAmount >= data.grandTotal ? 'paid' : data.paidAmount > 0 ? 'partial' : 'unpaid',
       note:            data.note || '',
+      salesmanId:      data.salesmanId || '',
+      salesmanName:    data.salesmanName || '',
       createdAt:       Date.now(),
     };
 
@@ -269,7 +271,7 @@ export function AppDataProvider({ children }) {
   }, [orders]);
 
   // ── PAYMENT ────────────────────────────────────────────────
-  const addPayment = useCallback(async (orderId, amount, note = '') => {
+  const addPayment = useCallback(async (orderId, amount, note = '', salesmanId = '', salesmanName = '') => {
     const amt = Number(amount);
     if (!amt || amt <= 0) return;
 
@@ -288,7 +290,7 @@ export function AppDataProvider({ children }) {
       setOrders(updatedOrders);
       save(KEYS.orders, updatedOrders);
 
-      const payment = { id: 'P' + Date.now(), orderId, amount: amt, note, date: Date.now() };
+      const payment = { id: 'P' + Date.now(), orderId, amount: amt, note, salesmanId, salesmanName, date: Date.now() };
       const updatedPayments = [payment, ...payments];
       setPayments(updatedPayments);
       save(KEYS.payments, updatedPayments);
@@ -305,7 +307,7 @@ export function AppDataProvider({ children }) {
       status:     newRemaining <= 0 ? 'paid' : newPaid > 0 ? 'partial' : 'unpaid',
     });
     await addDoc(collection(db, 'payments'), {
-      orderId, amount: amt, note, date: serverTimestamp(),
+      orderId, amount: amt, note, salesmanId, salesmanName, date: serverTimestamp(),
     });
   }, [orders, payments]);
 
