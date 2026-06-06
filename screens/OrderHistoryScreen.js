@@ -337,7 +337,7 @@ export default function OrderHistoryScreen({ switchTab, viewCustomer, navigation
       </View>
 
       {/* Filters */}
-      <View style={[oh.filterBar, oh.filterRow, Platform.OS === 'web' && { overflow: 'scroll' }]}>
+      <View dataSet={{ hscroll: '1' }} style={[oh.filterBar, oh.filterRow, Platform.OS === 'web' && { overflow: 'scroll' }]}>
         {/* Status filter */}
         {['all', 'unpaid', 'partial', 'paid'].map(s => (
           <TouchableOpacity

@@ -24,6 +24,18 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
       -webkit-overflow-scrolling: touch;
       overscroll-behavior-y: contain;
     }
+    [data-hscroll="1"] {
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      -webkit-overflow-scrolling: touch !important;
+      touch-action: pan-x !important;
+      overscroll-behavior-x: contain;
+      scrollbar-width: none;
+      flex-wrap: nowrap !important;
+      display: flex !important;
+    }
+    [data-hscroll="1"]::-webkit-scrollbar { display: none; }
+    [data-hscroll="1"] > * { flex-shrink: 0 !important; }
     * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
     img { image-rendering: auto; will-change: auto; }
     [role="button"], button { cursor: pointer; }

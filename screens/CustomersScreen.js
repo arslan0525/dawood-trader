@@ -277,7 +277,7 @@ export default function CustomersScreen({ switchTab, viewCustomer }) {
 
       {/* Route cards — scroll karo left/right */}
       <View style={cs.routeCardsWrap}>
-        <View style={[cs.routeCardsRow, Platform.OS === 'web' && { overflow: 'scroll' }]}>
+        <View dataSet={{ hscroll: '1' }} style={[cs.routeCardsRow, Platform.OS === 'web' && { overflow: 'scroll' }]}>
           {/* All Routes card */}
           <TouchableOpacity
             style={[cs.routeCard, routeFilter === 0 && cs.routeCardActive]}
