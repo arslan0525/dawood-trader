@@ -114,9 +114,12 @@ export function AppDataProvider({ children }) {
       }
     };
 
-    const LIMITS = { products: 500, customers: 500, orders: 300, payments: 500 };
+    const LIMITS = { products: 500, customers: 500, payments: 500 };
     const listenCol = (colName, setter, sortField = 'createdAt') => {
-      const q = query(collection(db, colName), orderBy(sortField, 'desc'), limit(LIMITS[colName] || 300));
+      const lim = LIMITS[colName];
+      const q = lim
+        ? query(collection(db, colName), orderBy(sortField, 'desc'), limit(lim))
+        : query(collection(db, colName), orderBy(sortField, 'desc'));
       const unsub = onSnapshot(q, { includeMetadataChanges: false }, async snap => {
         if (colName === 'products' && snap.empty && !productSeeded) {
           productSeeded = true;
