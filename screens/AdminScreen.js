@@ -18,6 +18,7 @@ export default function AdminScreen({ navigation, switchTab, editProduct }) {
   const [search, setSearch]         = useState('');
   const [editPriceId, setEditPriceId]   = useState(null);
   const [editPriceVal, setEditPriceVal] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const { showToast }               = useToast();
   const { products: ctxProducts, loading: ctxLoading, setProductStock, getStock, updateProductDemo, removeProduct } = useAppData();
   const { width }                   = useWindowDimensions();
@@ -113,26 +114,28 @@ export default function AdminScreen({ navigation, switchTab, editProduct }) {
 
   const handleDeleteFromMirinda = async () => {
     const toDelete = products.filter(p => !KEEP_NAMES.has(p.name));
-    if (toDelete.length === 0) { showToast('Koi product delete karne layak nahi!', 'success'); return; }
-    const ok = Platform.OS === 'web'
-      ? window.confirm(`${toDelete.length} products delete honge.\nSirf OG Cola, OG Lemon, OG Orange, Sprite, Fanta Orange bachenge.\nConfirm?`)
-      : await new Promise(resolve => Alert.alert(
-          'Delete Confirm?',
-          `${toDelete.length} products (Mirinda se last tak) delete honge`,
-          [{ text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-           { text: 'Delete', style: 'destructive', onPress: () => resolve(true) }]
-        ));
-    if (!ok) return;
-    showToast('Deleting...', 'info');
-    let deleted = 0;
+    if (toDelete.length === 0) { showToast('Sirf OG products hain — kuch delete karne ki zaroorat nahi!', 'success'); setConfirmDelete(false); return; }
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      showToast(`${toDelete.length} products milein — dobara dabaen confirm karne ke liye!`, 'info');
+      setTimeout(() => setConfirmDelete(false), 4000);
+      return;
+    }
+    setConfirmDelete(false);
+    showToast(`${toDelete.length} products delete ho rahe hain...`, 'info');
+    let deleted = 0, failed = 0;
     for (const p of toDelete) {
       try {
         if (IS_DEMO) { removeProduct(p.id); }
         else { await deleteDoc(doc(db, 'products', p.id)); }
         deleted++;
-      } catch {}
+      } catch (err) {
+        failed++;
+        console.warn('Delete failed for', p.name, err?.message);
+      }
     }
-    showToast(`${deleted} products delete ho gaye!`, 'success');
+    if (failed > 0) showToast(`${deleted} delete hue, ${failed} fail hue!`, 'error');
+    else showToast(`${deleted} products delete ho gaye!`, 'success');
   };
 
   const handleStockChange = (item, delta) => {
@@ -273,8 +276,8 @@ export default function AdminScreen({ navigation, switchTab, editProduct }) {
         )}
         <Text style={[styles.headerTitle, isWeb && styles.headerTitleWeb]}>📦 Inventory</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <TouchableOpacity style={styles.cleanupBtn} onPress={handleDeleteFromMirinda}>
-            <Text style={styles.cleanupBtnTxt}>🗑️ OG Only</Text>
+          <TouchableOpacity style={[styles.cleanupBtn, confirmDelete && styles.cleanupBtnConfirm]} onPress={handleDeleteFromMirinda}>
+            <Text style={[styles.cleanupBtnTxt, confirmDelete && { color: '#fff' }]}>{confirmDelete ? '⚠️ Confirm?' : '🗑️ OG Only'}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.addBtnHeader}
@@ -369,8 +372,9 @@ const styles = StyleSheet.create({
   headerTitleWeb: { color: C.text },
   addBtnHeader:   { backgroundColor: C.primary, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8 },
   addBtnHeaderText:{ color: '#fff', fontSize: 13, fontWeight: '700' },
-  cleanupBtn:     { backgroundColor: '#fee2e2', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: '#fecaca' },
-  cleanupBtnTxt:  { color: '#b91c1c', fontSize: 12, fontWeight: '700' },
+  cleanupBtn:        { backgroundColor: '#fee2e2', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: '#fecaca' },
+  cleanupBtnConfirm: { backgroundColor: '#b91c1c', borderColor: '#991b1b' },
+  cleanupBtnTxt:     { color: '#b91c1c', fontSize: 12, fontWeight: '700' },
 
   demoBanner: { backgroundColor: '#fffbeb', borderBottomWidth: 1, borderColor: '#fde68a', paddingVertical: 8, paddingHorizontal: 16 },
   demoText:   { color: '#92400e', fontSize: 12, textAlign: 'center', fontWeight: '600' },
