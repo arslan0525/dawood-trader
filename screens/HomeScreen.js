@@ -531,14 +531,14 @@ export default function HomeScreen({ navigation, switchTab }) {
     return (
       <View style={s.root}>
         {Toolbar()}
-        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+        <View style={s.webCatalog}>
           {ResultsRow}
           {groups.length === 0
             ? EmptyComp
             : groups.map(g => <ProductGroup key={g.id} group={g} {...groupProps} />)
           }
-          <div style={{ height: 80 }} />
-        </div>
+          <View style={{ height: 80 }} />
+        </View>
         {isAdmin && (
           <TouchableOpacity
             style={s.fab}

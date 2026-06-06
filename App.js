@@ -8,35 +8,14 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
   document.body.style.cssText = 'height:100%;overflow:hidden;margin:0;padding:0;';
   const css = document.createElement('style');
   css.textContent = `
-    ::-webkit-scrollbar { width: 0 !important; height: 0 !important; background: transparent !important; }
-    ::-webkit-scrollbar-track { display: none !important; }
-    ::-webkit-scrollbar-thumb { display: none !important; }
-    * { scrollbar-width: none !important; -ms-overflow-style: none !important; }
-    [data-scroll], div[style*="overflow-y: scroll"] { overflow-y: scroll !important; }
     div[style*="overflow-y: auto"], div[style*="overflow-y: scroll"] {
       -webkit-overflow-scrolling: touch;
       overscroll-behavior-y: contain;
     }
-    [data-hscroll="1"] {
-      overflow-x: auto !important;
-      overflow-y: hidden !important;
-      -webkit-overflow-scrolling: touch !important;
-      touch-action: pan-x !important;
-      overscroll-behavior-x: contain;
-      scrollbar-width: none;
-      flex-wrap: nowrap !important;
-      display: flex !important;
-    }
-    [data-hscroll="1"]::-webkit-scrollbar { display: none; }
-    [data-hscroll="1"] > * { flex-shrink: 0 !important; }
-    div[style*="opacity"] { transition-duration: 50ms !important; }
-    div[style*="translateZ"] { will-change: transform; }
     * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; touch-action: manipulation; }
     img { image-rendering: auto; }
     [role="button"], button { cursor: pointer; user-select: none; -webkit-user-select: none; }
-    [role="button"] > *, button > * { pointer-events: none; }
     input, textarea, select { font-family: inherit; touch-action: auto; }
-    div[data-scrollable] { touch-action: pan-y; }
     * { -webkit-font-smoothing: antialiased; }
   `;
   document.head.appendChild(css);

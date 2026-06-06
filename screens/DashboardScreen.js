@@ -325,7 +325,6 @@ export default function DashboardScreen({ switchTab }) {
     <ScrollView
       style={ds.root}
       contentContainerStyle={[ds.body, { paddingHorizontal: isWide ? 24 : 14 }]}
-      showsVerticalScrollIndicator={false}
     >
       {/* Welcome bar (mobile only) */}
       {!isWide && (
