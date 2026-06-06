@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import {
   collection, onSnapshot, addDoc, updateDoc, deleteDoc,
-  doc, query, orderBy, serverTimestamp, writeBatch,
+  doc, query, orderBy, serverTimestamp, writeBatch, getDocs,
 } from 'firebase/firestore';
 import { db, IS_DEMO } from '../services/firebase';
 import {
@@ -74,6 +74,28 @@ export function AppDataProvider({ children }) {
     // Firebase real-time listeners
     const unsubs = [];
 
+    // One-time cleanup: sirf OG products bachao, baaki delete
+    const OG_CLEANUP_KEY = 'dt_og_cleanup_v1';
+    let cleanupRan = false;
+    const runOgCleanup = async () => {
+      if (cleanupRan) return;
+      cleanupRan = true;
+      try {
+        if (typeof localStorage !== 'undefined' && localStorage.getItem(OG_CLEANUP_KEY)) return;
+        const KEEP = new Set(['OG Cola', 'OG Lemon', 'OG Orange', 'Sprite', 'Fanta Orange']);
+        const snap = await getDocs(collection(db, 'products'));
+        const toDelete = snap.docs.filter(d => !KEEP.has(d.data().name));
+        if (toDelete.length === 0) { if (typeof localStorage !== 'undefined') localStorage.setItem(OG_CLEANUP_KEY, '1'); return; }
+        for (const d of toDelete) {
+          try { await deleteDoc(doc(db, 'products', d.id)); } catch {}
+        }
+        if (typeof localStorage !== 'undefined') localStorage.setItem(OG_CLEANUP_KEY, '1');
+        console.log(`OG cleanup: ${toDelete.length} products deleted`);
+      } catch (e) {
+        console.warn('OG cleanup failed:', e?.message);
+      }
+    };
+
     // Auto-seed products if Firestore is empty
     let productSeeded = false;
     const seedProducts = async () => {
@@ -100,6 +122,7 @@ export function AppDataProvider({ children }) {
           await seedProducts();
           return; // listener will fire again after seeding
         }
+        if (colName === 'products' && !snap.empty) runOgCleanup();
         setter(snap.docs.map(d => ({ id: d.id, ...d.data() })));
         setLoading(false);
       }, (err) => {
