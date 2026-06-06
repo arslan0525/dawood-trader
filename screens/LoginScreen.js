@@ -9,17 +9,31 @@ import { auth } from '../services/firebase';
 import { useAuth } from '../context/AuthContext';
 import { C } from '../constants/theme';
 
+const FEATURES = [
+  { icon: '📦', text: 'Inventory & Stock Management' },
+  { icon: '👥', text: 'Customer & Route Management' },
+  { icon: '📋', text: 'Instant Billing & Orders' },
+  { icon: '💰', text: 'Recovery Tracking System' },
+  { icon: '💬', text: 'WhatsApp Bill Sharing' },
+  { icon: '📊', text: 'Business Dashboard' },
+];
+
+const STATS = [
+  { value: '20+', label: 'Products' },
+  { value: '7', label: 'Routes' },
+  { value: '100%', label: 'Digital' },
+];
+
 export default function LoginScreen({ navigation }) {
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [loading,  setLoading]  = useState(false);
-  const [remember, setRemember] = useState(true);
-  const [agreed,   setAgreed]   = useState(true);
 
   const { IS_DEMO, demoLogin } = useAuth();
-  const { width }              = useWindowDimensions();
+  const { width, height }      = useWindowDimensions();
   const isSplit                = width >= 860;
+  const isMobile               = width < 480;
 
   const emailRef    = useRef(null);
   const passwordRef = useRef(null);
@@ -34,120 +48,182 @@ export default function LoginScreen({ navigation }) {
     finally { setLoading(false); }
   };
 
-  const form = (
+  /* ── Left brand panel ─────────────────────────────────── */
+  const BrandPanel = () => (
+    <View style={s.brandPanel}>
+      {/* Decorative circles */}
+      <View style={s.circle1} />
+      <View style={s.circle2} />
+      <View style={s.circle3} />
+      <View style={s.circle4} />
+
+      <View style={s.brandContent}>
+        {/* Logo row */}
+        <View style={s.brandLogoRow}>
+          <View style={s.brandIconWrap}>
+            <Text style={{ fontSize: 26 }}>🛒</Text>
+          </View>
+          <View>
+            <Text style={s.brandName}>Dawood Trader</Text>
+            <Text style={s.brandSub}>Distribution Management</Text>
+          </View>
+        </View>
+
+        {/* Headline */}
+        <Text style={s.brandHeadline}>
+          Professional Business Software for Pakistani Distributors
+        </Text>
+
+        {/* Stats row */}
+        <View style={s.statsRow}>
+          {STATS.map(st => (
+            <View key={st.label} style={s.statItem}>
+              <Text style={s.statValue}>{st.value}</Text>
+              <Text style={s.statLabel}>{st.label}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Feature list */}
+        <View style={s.featureList}>
+          {FEATURES.map(f => (
+            <View key={f.text} style={s.featureRow}>
+              <View style={s.featureIcon}>
+                <Text style={{ fontSize: 15 }}>{f.icon}</Text>
+              </View>
+              <Text style={s.featureText}>{f.text}</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Footer */}
+        <View style={s.brandFooter}>
+          <Text style={s.brandFooterTxt}>🇵🇰  Made by Arslan Shahani</Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  /* ── Form panel ───────────────────────────────────────── */
+  const FormPanel = () => (
     <KeyboardAvoidingView
       style={s.formPanel}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
-        contentContainerStyle={s.formScroll}
+        contentContainerStyle={[s.formScroll, { minHeight: isSplit ? undefined : height }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={s.formInner}>
+        <View style={[s.formInner, isMobile && { padding: 24 }]}>
 
-          {/* Logo */}
-          <View style={s.logoWrap}>
-            <View style={s.logoBox}>
-              <Text style={s.logoEmoji}>🛒</Text>
-            </View>
-            <Text style={s.logoName}>Dawood Trader</Text>
-            <Text style={s.logoSub}>Distribution Management System</Text>
-          </View>
-
-          {/* Heading */}
-          <Text style={s.welcomeTxt}>Welcome back</Text>
-          <Text style={s.headingTxt}>Login to your account</Text>
-
-          {/* Email */}
-          <Text style={s.fieldLabel}>Email</Text>
-          <View style={s.inputBox}>
-            <TextInput
-              ref={emailRef}
-              style={s.input}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="you@example.com"
-              placeholderTextColor="#aab"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              returnKeyType="next"
-              onSubmitEditing={() => passwordRef.current?.focus()}
-              blurOnSubmit={false}
-            />
-          </View>
-
-          {/* Password */}
-          <Text style={s.fieldLabel}>Password</Text>
-          <View style={s.inputBox}>
-            <TextInput
-              ref={passwordRef}
-              style={[s.input, { flex: 1 }]}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="••••••••••"
-              placeholderTextColor="#aab"
-              secureTextEntry={!showPass}
-              autoCapitalize="none"
-              returnKeyType="done"
-              onSubmitEditing={handleLogin}
-            />
-            <TouchableOpacity
-              onPress={() => setShowPass(v => !v)}
-              style={s.eyeBtn}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Text style={s.eyeIcon}>{showPass ? '👁️' : '🙈'}</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Remember me + Forgot password */}
-          <View style={s.remRow}>
-            <TouchableOpacity style={s.checkRow} onPress={() => setRemember(v => !v)} activeOpacity={0.7}>
-              <View style={[s.checkbox, remember && s.checkboxOn]}>
-                {remember && <Text style={s.checkmark}>✓</Text>}
+          {/* Mobile logo (hidden on split) */}
+          {!isSplit && (
+            <View style={s.mobileLogoWrap}>
+              <View style={s.mobileLogoBg}>
+                <View style={s.mobileLogoBox}>
+                  <Text style={{ fontSize: 36 }}>🛒</Text>
+                </View>
               </View>
-              <Text style={s.remTxt}>Remember me</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => Alert.alert('Forgot Password', 'Magic Link se login karein — password ki zaroorat nahi!')}>
-              <Text style={s.forgotTxt}>Forgot password?</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Terms */}
-          <TouchableOpacity style={s.checkRow} onPress={() => setAgreed(v => !v)} activeOpacity={0.7}>
-            <View style={[s.checkbox, agreed && s.checkboxOn]}>
-              {agreed && <Text style={s.checkmark}>✓</Text>}
+              <Text style={s.mobileAppName}>Dawood Trader</Text>
+              <Text style={s.mobileAppSub}>Distribution Management System</Text>
             </View>
-            <Text style={s.termsTxt}>
-              By continuing you agree to our{' '}
-              <Text style={s.termsLink}>Privacy Policy</Text>
-              {' '}and{' '}
-              <Text style={s.termsLink}>Terms of Use</Text>
-            </Text>
-          </TouchableOpacity>
+          )}
 
-          {/* Login Button */}
-          <TouchableOpacity
-            style={[s.loginBtn, (loading || !agreed) && s.loginBtnDisabled]}
-            onPress={handleLogin}
-            disabled={loading || !agreed}
-            activeOpacity={0.85}
-          >
-            {loading
-              ? <><ActivityIndicator color="#fff" size="small" /><Text style={s.loginBtnTxt}>  Please wait...</Text></>
-              : <Text style={s.loginBtnTxt}>Login  →</Text>
-            }
-          </TouchableOpacity>
+          {/* Card */}
+          <View style={[s.card, isSplit && { paddingTop: 40, paddingBottom: 40 }]}>
+            <Text style={s.welcomeTxt}>Welcome back 👋</Text>
+            <Text style={s.headingTxt}>Login karein</Text>
+            <Text style={s.headingSub}>Apna account access karein</Text>
 
-          {/* Register */}
-          <View style={s.bottomRow}>
-            <Text style={s.bottomTxt}>Don't have an account?  </Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
-              <Text style={s.bottomLink}>Create Account</Text>
+            {/* Email field */}
+            <View style={s.fieldWrap}>
+              <Text style={s.fieldLabel}>Email Address</Text>
+              <View style={s.inputBox}>
+                <Text style={s.inputIcon}>✉️</Text>
+                <TextInput
+                  ref={emailRef}
+                  style={s.input}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="aapki@email.com"
+                  placeholderTextColor="#b0b8c9"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  returnKeyType="next"
+                  onSubmitEditing={() => passwordRef.current?.focus()}
+                  blurOnSubmit={false}
+                />
+              </View>
+            </View>
+
+            {/* Password field */}
+            <View style={s.fieldWrap}>
+              <View style={s.fieldLabelRow}>
+                <Text style={s.fieldLabel}>Password</Text>
+                <TouchableOpacity onPress={() => Alert.alert('Password Reset', 'Admin se rabta karein ya naya account banayein.')}>
+                  <Text style={s.forgotTxt}>Bhool gaye?</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={s.inputBox}>
+                <Text style={s.inputIcon}>🔒</Text>
+                <TextInput
+                  ref={passwordRef}
+                  style={[s.input, { flex: 1 }]}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="••••••••"
+                  placeholderTextColor="#b0b8c9"
+                  secureTextEntry={!showPass}
+                  autoCapitalize="none"
+                  returnKeyType="done"
+                  onSubmitEditing={handleLogin}
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPass(v => !v)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  style={{ padding: 4 }}
+                >
+                  <Text style={{ fontSize: 18 }}>{showPass ? '👁️' : '🙈'}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Login button */}
+            <TouchableOpacity
+              style={[s.loginBtn, loading && s.loginBtnLoading]}
+              onPress={handleLogin}
+              disabled={loading}
+              activeOpacity={0.88}
+            >
+              {loading ? (
+                <><ActivityIndicator color="#fff" size="small" /><Text style={[s.loginBtnTxt, { marginLeft: 10 }]}>Logging in...</Text></>
+              ) : (
+                <Text style={s.loginBtnTxt}>Login karein  →</Text>
+              )}
+            </TouchableOpacity>
+
+            {/* Divider */}
+            <View style={s.divider}>
+              <View style={s.dividerLine} />
+              <Text style={s.dividerTxt}>ya</Text>
+              <View style={s.dividerLine} />
+            </View>
+
+            {/* Register */}
+            <TouchableOpacity
+              style={s.registerBtn}
+              onPress={() => navigation.navigate('Signup')}
+              activeOpacity={0.85}
+            >
+              <Text style={s.registerBtnTxt}>Naya account banayein</Text>
             </TouchableOpacity>
           </View>
 
+          {/* Mobile footer */}
+          {!isSplit && (
+            <Text style={s.mobileFooter}>🇵🇰  Made by Arslan Shahani</Text>
+          )}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -156,125 +232,145 @@ export default function LoginScreen({ navigation }) {
   if (isSplit) {
     return (
       <View style={s.splitRoot}>
-        {/* Left brand panel */}
-        <View style={s.brandPanel}>
-          <View style={s.dec1} /><View style={s.dec2} /><View style={s.dec3} />
-          <View style={s.brandContent}>
-            <View style={s.brandLogoRow}>
-              <View style={s.brandIconWrap}>
-                <Text style={{ fontSize: 28 }}>🛒</Text>
-              </View>
-              <View>
-                <Text style={s.brandName}>Dawood Trader</Text>
-                <Text style={s.brandSub}>Distribution Management</Text>
-              </View>
-            </View>
-            <Text style={s.brandHeadline}>Professional Business Software for Pakistani Distributors</Text>
-            {[
-              { icon: '📦', text: 'Inventory & Stock Management' },
-              { icon: '👥', text: 'Customer & Route Management' },
-              { icon: '📋', text: 'Instant Billing & Orders' },
-              { icon: '💰', text: 'Recovery Tracking System' },
-              { icon: '💬', text: 'WhatsApp Bill Sharing' },
-              { icon: '📊', text: 'Business Dashboard' },
-            ].map(f => (
-              <View key={f.text} style={s.featureRow}>
-                <View style={s.featureIcon}><Text style={{ fontSize: 16 }}>{f.icon}</Text></View>
-                <Text style={s.featureText}>{f.text}</Text>
-              </View>
-            ))}
-            <View style={s.brandFooter}>
-              <Text style={s.brandFooterTxt}>🇵🇰 Made for Pakistan</Text>
-            </View>
-          </View>
-        </View>
-        {form}
+        <BrandPanel />
+        <FormPanel />
       </View>
     );
   }
 
-  return <View style={{ flex: 1, backgroundColor: '#f5f6fa' }}>{form}</View>;
+  return (
+    <View style={s.mobileRoot}>
+      <FormPanel />
+    </View>
+  );
 }
 
 const s = StyleSheet.create({
-  splitRoot:  { flex: 1, flexDirection: 'row' },
+  /* ── Split layout ── */
+  splitRoot: { flex: 1, flexDirection: 'row', backgroundColor: '#f0f4ff' },
 
-  /* Brand panel (desktop left side) */
-  brandPanel:    { width: '44%', backgroundColor: C.primaryDark, justifyContent: 'center', overflow: 'hidden', position: 'relative' },
-  dec1:          { position: 'absolute', width: 340, height: 340, borderRadius: 170, backgroundColor: 'rgba(255,255,255,0.04)', top: -90, right: -110 },
-  dec2:          { position: 'absolute', width: 240, height: 240, borderRadius: 120, backgroundColor: 'rgba(255,255,255,0.04)', bottom: 50, left: -90 },
-  dec3:          { position: 'absolute', width: 160, height: 160, borderRadius: 80,  backgroundColor: 'rgba(255,255,255,0.05)', top: '42%', right: -50 },
-  brandContent:  { padding: 48 },
-  brandLogoRow:  { flexDirection: 'row', alignItems: 'center', marginBottom: 32 },
-  brandIconWrap: { width: 56, height: 56, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', marginRight: 14, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.22)' },
-  brandName:     { color: '#fff', fontSize: 22, fontWeight: '800' },
+  /* ── Brand panel ── */
+  brandPanel: {
+    width: '43%',
+    backgroundColor: '#1a3a8f',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  circle1: { position: 'absolute', width: 400, height: 400, borderRadius: 200, backgroundColor: 'rgba(255,255,255,0.05)', top: -120, right: -120 },
+  circle2: { position: 'absolute', width: 280, height: 280, borderRadius: 140, backgroundColor: 'rgba(255,255,255,0.04)', bottom: -60, left: -80 },
+  circle3: { position: 'absolute', width: 180, height: 180, borderRadius: 90,  backgroundColor: 'rgba(99,179,237,0.1)', top: '38%', right: -50 },
+  circle4: { position: 'absolute', width: 100, height: 100, borderRadius: 50,  backgroundColor: 'rgba(255,255,255,0.06)', bottom: '25%', right: 40 },
+
+  brandContent:  { paddingHorizontal: 44, paddingVertical: 40 },
+  brandLogoRow:  { flexDirection: 'row', alignItems: 'center', marginBottom: 28 },
+  brandIconWrap: {
+    width: 52, height: 52, borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center', alignItems: 'center',
+    marginRight: 12, borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  brandName:     { color: '#fff', fontSize: 20, fontWeight: '800' },
   brandSub:      { color: 'rgba(255,255,255,0.5)', fontSize: 11, marginTop: 2 },
-  brandHeadline: { color: 'rgba(255,255,255,0.88)', fontSize: 22, fontWeight: '700', lineHeight: 32, marginBottom: 28 },
-  featureRow:    { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  featureIcon:   { width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center', marginRight: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)' },
-  featureText:   { color: 'rgba(255,255,255,0.78)', fontSize: 13, fontWeight: '500' },
-  brandFooter:   { marginTop: 32, paddingTop: 20, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' },
-  brandFooterTxt:{ color: 'rgba(255,255,255,0.4)', fontSize: 11 },
+  brandHeadline: { color: '#fff', fontSize: 20, fontWeight: '700', lineHeight: 30, marginBottom: 24, opacity: 0.92 },
 
-  /* Form panel */
-  formPanel:  { flex: 1, backgroundColor: '#f5f6fa' },
+  statsRow:  { flexDirection: 'row', gap: 16, marginBottom: 28 },
+  statItem:  { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
+  statValue: { color: '#fff', fontSize: 20, fontWeight: '800' },
+  statLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 10, marginTop: 2, fontWeight: '600' },
+
+  featureList: { gap: 10, marginBottom: 28 },
+  featureRow:  { flexDirection: 'row', alignItems: 'center' },
+  featureIcon: {
+    width: 36, height: 36, borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center', alignItems: 'center',
+    marginRight: 12, borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  featureText: { color: 'rgba(255,255,255,0.82)', fontSize: 13, fontWeight: '500' },
+
+  brandFooter:    { paddingTop: 20, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.12)' },
+  brandFooterTxt: { color: 'rgba(255,255,255,0.45)', fontSize: 12, fontWeight: '500' },
+
+  /* ── Form panel ── */
+  formPanel:  { flex: 1, backgroundColor: '#f0f4ff' },
   formScroll: { flexGrow: 1, justifyContent: 'center' },
-  formInner:  { padding: 32, maxWidth: 440, alignSelf: 'center', width: '100%' },
+  formInner:  { padding: 32, maxWidth: 460, alignSelf: 'center', width: '100%' },
 
-  /* Logo (mobile) */
-  logoWrap:  { alignItems: 'center', marginBottom: 32, marginTop: 16 },
-  logoBox:   { width: 72, height: 72, borderRadius: 20, backgroundColor: C.primary, justifyContent: 'center', alignItems: 'center', marginBottom: 12, shadowColor: C.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 8 },
-  logoEmoji: { fontSize: 34 },
-  logoName:  { fontSize: 22, fontWeight: '800', color: '#1a1a2e' },
-  logoSub:   { fontSize: 11, color: '#888', marginTop: 3 },
+  /* ── Mobile logo ── */
+  mobileRoot:     { flex: 1, backgroundColor: '#f0f4ff' },
+  mobileLogoWrap: { alignItems: 'center', paddingTop: 48, paddingBottom: 24 },
+  mobileLogoBg:   { width: 100, height: 100, borderRadius: 28, backgroundColor: '#1a3a8f', justifyContent: 'center', alignItems: 'center', marginBottom: 14, shadowColor: '#1a3a8f', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.35, shadowRadius: 16, elevation: 10 },
+  mobileLogoBox:  { alignItems: 'center' },
+  mobileAppName:  { fontSize: 24, fontWeight: '800', color: '#1a1a2e', marginBottom: 4 },
+  mobileAppSub:   { fontSize: 12, color: '#7a8599', textAlign: 'center' },
 
-  /* Headings */
-  welcomeTxt: { fontSize: 15, color: '#666', marginBottom: 4 },
-  headingTxt: { fontSize: 28, fontWeight: '800', color: '#1a1a2e', marginBottom: 28, lineHeight: 34 },
+  /* ── Card ── */
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 28,
+    shadowColor: '#1a3a8f',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.09,
+    shadowRadius: 24,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(26,58,143,0.07)',
+  },
+  welcomeTxt: { fontSize: 14, color: '#7a8599', marginBottom: 4 },
+  headingTxt: { fontSize: 26, fontWeight: '800', color: '#1a1a2e', marginBottom: 4 },
+  headingSub: { fontSize: 13, color: '#9aa3b5', marginBottom: 24 },
 
-  /* Inputs */
-  fieldLabel: { fontSize: 13, fontWeight: '600', color: '#444', marginBottom: 8 },
+  /* ── Fields ── */
+  fieldWrap:     { marginBottom: 18 },
+  fieldLabelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  fieldLabel:    { fontSize: 13, fontWeight: '600', color: '#3d4757', marginBottom: 8 },
   inputBox: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#fff', borderRadius: 10,
-    borderWidth: 1.5, borderColor: '#dde1ea',
-    paddingHorizontal: 16, marginBottom: 20,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
+    backgroundColor: '#f8faff',
+    borderRadius: 12, borderWidth: 1.5,
+    borderColor: '#dce3f0',
+    paddingHorizontal: 14, paddingVertical: Platform.OS === 'web' ? 4 : 0,
   },
-  input: { flex: 1, paddingVertical: 14, fontSize: 15, color: '#1a1a2e' },
-  eyeBtn:  { padding: 4 },
-  eyeIcon: { fontSize: 18 },
-
-  /* Remember + forgot */
-  remRow:   { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 },
-  checkRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
-  checkbox: {
-    width: 20, height: 20, borderRadius: 6,
-    borderWidth: 2, borderColor: '#c0c4cf',
-    justifyContent: 'center', alignItems: 'center',
-    backgroundColor: '#fff',
+  inputIcon: { fontSize: 16, marginRight: 10 },
+  input: {
+    flex: 1,
+    paddingVertical: 13,
+    fontSize: 15,
+    color: '#1a1a2e',
+    ...(Platform.OS === 'web' ? { outlineStyle: 'none' } : {}),
   },
-  checkboxOn: { backgroundColor: C.primary, borderColor: C.primary },
-  checkmark:  { color: '#fff', fontSize: 11, fontWeight: '800' },
-  remTxt:    { fontSize: 13, color: '#444', fontWeight: '500' },
-  forgotTxt: { fontSize: 13, color: C.primary, fontWeight: '600' },
+  forgotTxt: { fontSize: 12, color: C.primary, fontWeight: '600' },
 
-  /* Terms */
-  termsTxt:  { fontSize: 12, color: '#666', flex: 1, lineHeight: 18 },
-  termsLink: { color: C.primary, fontWeight: '600' },
-
-  /* Login button */
+  /* ── Login button ── */
   loginBtn: {
     flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
-    backgroundColor: C.primary, borderRadius: 12,
-    paddingVertical: 17, marginTop: 24, marginBottom: 20,
-    shadowColor: C.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 6,
+    backgroundColor: '#1a3a8f',
+    borderRadius: 14, paddingVertical: 16,
+    marginTop: 6,
+    shadowColor: '#1a3a8f',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35, shadowRadius: 14, elevation: 8,
   },
-  loginBtnDisabled: { backgroundColor: '#9eabbd', shadowOpacity: 0 },
-  loginBtnTxt: { color: '#fff', fontSize: 16, fontWeight: '800', letterSpacing: 0.3 },
+  loginBtnLoading: { opacity: 0.75 },
+  loginBtnTxt:     { color: '#fff', fontSize: 16, fontWeight: '800', letterSpacing: 0.3 },
 
-  /* Bottom register link */
-  bottomRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
-  bottomTxt: { fontSize: 13, color: '#888' },
-  bottomLink:{ fontSize: 13, color: C.primary, fontWeight: '700' },
+  /* ── Divider ── */
+  divider:     { flexDirection: 'row', alignItems: 'center', marginVertical: 20, gap: 12 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: '#e8edf5' },
+  dividerTxt:  { fontSize: 12, color: '#a0aab8', fontWeight: '500' },
+
+  /* ── Register button ── */
+  registerBtn: {
+    borderWidth: 1.5, borderColor: '#dce3f0',
+    borderRadius: 14, paddingVertical: 14,
+    alignItems: 'center', backgroundColor: '#f8faff',
+  },
+  registerBtnTxt: { fontSize: 14, fontWeight: '700', color: '#1a3a8f' },
+
+  /* ── Mobile footer ── */
+  mobileFooter: { textAlign: 'center', color: '#9aa3b5', fontSize: 11, marginTop: 24, paddingBottom: 16 },
 });
