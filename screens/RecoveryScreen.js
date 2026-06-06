@@ -258,15 +258,19 @@ export default function RecoveryScreen({ switchTab, viewCustomer, navigation }) 
           )}
         </View>
         {Platform.OS === 'web' ? (
-          <div ref={routeScrollRef} style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', overflowX: 'auto', overflowY: 'hidden', gap: 6, padding: '10px 12px', alignItems: 'center', WebkitOverflowScrolling: 'touch', msOverflowStyle: 'none', scrollbarWidth: 'none', flexShrink: 0 }}>
-            <TouchableOpacity style={[rc.routeChip, routeFilter === 0 && rc.routeChipActive]} onPress={() => setRouteFilter(0)}>
-              <Text style={[rc.routeChipTxt, routeFilter === 0 && rc.routeChipTxtActive]}>All</Text>
-            </TouchableOpacity>
-            {ROUTES.map(r => (
-              <TouchableOpacity key={r.id} style={[rc.routeChip, routeFilter === r.id && { backgroundColor: r.color, borderColor: r.textColor + '55' }]} onPress={() => setRouteFilter(r.id)}>
-                <Text style={[rc.routeChipTxt, routeFilter === r.id && { color: r.textColor, fontWeight: '700' }]}>{r.name}</Text>
+          <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+            <button onClick={() => routeScrollRef.current?.scrollBy({ left: -160, behavior: 'smooth' })} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 20, color: '#1a56db', padding: '0 6px', flexShrink: 0, lineHeight: 1 }}>‹</button>
+            <div ref={routeScrollRef} style={{ flex: 1, display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', overflowX: 'auto', overflowY: 'hidden', gap: 6, padding: '10px 0', alignItems: 'center', WebkitOverflowScrolling: 'touch', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+              <TouchableOpacity style={[rc.routeChip, routeFilter === 0 && rc.routeChipActive]} onPress={() => setRouteFilter(0)}>
+                <Text style={[rc.routeChipTxt, routeFilter === 0 && rc.routeChipTxtActive]}>All</Text>
               </TouchableOpacity>
-            ))}
+              {ROUTES.map(r => (
+                <TouchableOpacity key={r.id} style={[rc.routeChip, routeFilter === r.id && { backgroundColor: r.color, borderColor: r.textColor + '55' }]} onPress={() => setRouteFilter(r.id)}>
+                  <Text style={[rc.routeChipTxt, routeFilter === r.id && { color: r.textColor, fontWeight: '700' }]}>{r.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </div>
+            <button onClick={() => routeScrollRef.current?.scrollBy({ left: 160, behavior: 'smooth' })} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 20, color: '#1a56db', padding: '0 6px', flexShrink: 0, lineHeight: 1 }}>›</button>
           </div>
         ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexShrink: 0 }} contentContainerStyle={{ flexDirection: 'row', gap: 6, paddingHorizontal: 12, paddingVertical: 10, alignItems: 'center' }}>

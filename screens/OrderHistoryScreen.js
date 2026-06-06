@@ -368,21 +368,25 @@ export default function OrderHistoryScreen({ switchTab, viewCustomer, navigation
 
       {/* Filters */}
       {Platform.OS === 'web' ? (
-        <div ref={filterScrollRef} style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', overflowX: 'auto', overflowY: 'hidden', padding: '7px 12px', gap: 6, alignItems: 'center', backgroundColor: '#fff', borderBottom: '1px solid #e2e8f0', flexShrink: 0, WebkitOverflowScrolling: 'touch', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
-          {['all', 'unpaid', 'partial', 'paid'].map(s => (
-            <TouchableOpacity key={s} style={[oh.filterChip, statusFilter === s && oh.filterChipActive]} onPress={() => setStatusFilter(s)}>
-              <Text style={[oh.filterChipTxt, statusFilter === s && oh.filterChipTxtActive]}>{s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}</Text>
+        <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#fff', borderBottom: '1px solid #e2e8f0', flexShrink: 0 }}>
+          <button onClick={() => filterScrollRef.current?.scrollBy({ left: -160, behavior: 'smooth' })} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 20, color: '#1a56db', padding: '0 6px', flexShrink: 0, lineHeight: 1 }}>‹</button>
+          <div ref={filterScrollRef} style={{ flex: 1, display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', overflowX: 'auto', overflowY: 'hidden', padding: '7px 0', gap: 6, alignItems: 'center', WebkitOverflowScrolling: 'touch', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+            {['all', 'unpaid', 'partial', 'paid'].map(s => (
+              <TouchableOpacity key={s} style={[oh.filterChip, statusFilter === s && oh.filterChipActive]} onPress={() => setStatusFilter(s)}>
+                <Text style={[oh.filterChipTxt, statusFilter === s && oh.filterChipTxtActive]}>{s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}</Text>
+              </TouchableOpacity>
+            ))}
+            <View style={oh.filterDivider} />
+            <TouchableOpacity style={[oh.filterChip, routeFilter === 0 && oh.filterChipActive]} onPress={() => setRouteFilter(0)}>
+              <Text style={[oh.filterChipTxt, routeFilter === 0 && oh.filterChipTxtActive]}>All Routes</Text>
             </TouchableOpacity>
-          ))}
-          <View style={oh.filterDivider} />
-          <TouchableOpacity style={[oh.filterChip, routeFilter === 0 && oh.filterChipActive]} onPress={() => setRouteFilter(0)}>
-            <Text style={[oh.filterChipTxt, routeFilter === 0 && oh.filterChipTxtActive]}>All Routes</Text>
-          </TouchableOpacity>
-          {ROUTES.map(r => (
-            <TouchableOpacity key={r.id} style={[oh.filterChip, routeFilter === r.id && { backgroundColor: r.color, borderColor: r.textColor + '44' }]} onPress={() => setRouteFilter(r.id)}>
-              <Text style={[oh.filterChipTxt, routeFilter === r.id && { color: r.textColor, fontWeight: '700' }]}>{r.name}</Text>
-            </TouchableOpacity>
-          ))}
+            {ROUTES.map(r => (
+              <TouchableOpacity key={r.id} style={[oh.filterChip, routeFilter === r.id && { backgroundColor: r.color, borderColor: r.textColor + '44' }]} onPress={() => setRouteFilter(r.id)}>
+                <Text style={[oh.filterChipTxt, routeFilter === r.id && { color: r.textColor, fontWeight: '700' }]}>{r.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </div>
+          <button onClick={() => filterScrollRef.current?.scrollBy({ left: 160, behavior: 'smooth' })} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 20, color: '#1a56db', padding: '0 6px', flexShrink: 0, lineHeight: 1 }}>›</button>
         </div>
       ) : (
         <View style={[oh.filterBar, oh.filterRow]}>

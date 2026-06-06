@@ -142,12 +142,16 @@ function CustomerModal({ visible, initial, routes, onSave, onClose, saving }) {
               <View style={cs.fieldWrap}>
                 <Text style={cs.fieldLabel}>{t('routeNo')} *</Text>
                 {Platform.OS === 'web' ? (
-                  <div ref={routeChipRef} style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', overflowX: 'auto', overflowY: 'hidden', gap: 8, paddingBottom: 4, WebkitOverflowScrolling: 'touch', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <button onClick={() => routeChipRef.current?.scrollBy({ left: -140, behavior: 'smooth' })} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 18, color: '#1a56db', padding: '0 4px', flexShrink: 0 }}>‹</button>
+                  <div ref={routeChipRef} style={{ flex: 1, display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', overflowX: 'auto', overflowY: 'hidden', gap: 8, paddingBottom: 4, WebkitOverflowScrolling: 'touch', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
                     {routes.map(r => (
                       <TouchableOpacity key={r.id} style={[cs.routeChip, form.routeId === r.id && { backgroundColor: r.color, borderColor: r.textColor + '66' }]} onPress={() => set('routeId', r.id)}>
                         <Text style={[cs.routeChipTxt, form.routeId === r.id && { color: r.textColor, fontWeight: '700' }]}>{r.name}</Text>
                       </TouchableOpacity>
                     ))}
+                  </div>
+                    <button onClick={() => routeChipRef.current?.scrollBy({ left: 140, behavior: 'smooth' })} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 18, color: '#1a56db', padding: '0 4px', flexShrink: 0 }}>›</button>
                   </div>
                 ) : (
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={cs.routeGrid}>
@@ -318,7 +322,9 @@ export default function CustomersScreen({ switchTab, viewCustomer }) {
 
       {/* Route cards — scroll left/right */}
       {Platform.OS === 'web' ? (
-        <div ref={routeScrollRef} style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', overflowX: 'auto', overflowY: 'hidden', padding: 10, gap: 8, backgroundColor: '#f0f4fa', borderBottom: '1px solid #e2e8f0', flexShrink: 0, WebkitOverflowScrolling: 'touch', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+        <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#f0f4fa', borderBottom: '1px solid #e2e8f0', flexShrink: 0 }}>
+          <button onClick={() => routeScrollRef.current?.scrollBy({ left: -160, behavior: 'smooth' })} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 20, color: '#1a56db', padding: '0 6px', flexShrink: 0, lineHeight: 1 }}>‹</button>
+        <div ref={routeScrollRef} style={{ flex: 1, display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', overflowX: 'auto', overflowY: 'hidden', padding: 10, gap: 8, WebkitOverflowScrolling: 'touch', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
           <TouchableOpacity style={[cs.routeCard, routeFilter === 0 && cs.routeCardActive]} onPress={() => setRouteFilter(0)} activeOpacity={0.8}>
             <Text style={cs.routeCardIcon}>🗺️</Text>
             <Text style={[cs.routeCardName, routeFilter === 0 && cs.routeCardNameActive]}>Sab Routes</Text>
@@ -339,6 +345,8 @@ export default function CustomersScreen({ switchTab, viewCustomer }) {
               </TouchableOpacity>
             );
           })}
+        </div>
+          <button onClick={() => routeScrollRef.current?.scrollBy({ left: 160, behavior: 'smooth' })} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 20, color: '#1a56db', padding: '0 6px', flexShrink: 0, lineHeight: 1 }}>›</button>
         </div>
       ) : (
         <View style={cs.routeCardsWrap}>
