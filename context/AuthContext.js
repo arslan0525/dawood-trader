@@ -10,7 +10,7 @@ import { auth, db, IS_DEMO } from '../services/firebase';
 import { DEMO_USER, DEMO_ADMIN } from '../services/demoData';
 
 const AuthContext = createContext();
-export const ADMIN_EMAIL = 'admin@dawoodtrader.com';
+export const ADMIN_EMAIL = 'sarslanameer@gmail.com';
 
 const SESS_KEY       = 'dt_demo_v1';
 const ML_EMAIL_KEY   = 'dt_ml_email';
