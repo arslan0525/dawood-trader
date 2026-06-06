@@ -75,14 +75,14 @@ export function AppDataProvider({ children }) {
     const unsubs = [];
 
     // One-time cleanup: sirf OG products bachao, baaki delete
-    const OG_CLEANUP_KEY = 'dt_og_cleanup_v1';
+    const OG_CLEANUP_KEY = 'dt_og_cleanup_v2';
     let cleanupRan = false;
     const runOgCleanup = async () => {
       if (cleanupRan) return;
       cleanupRan = true;
       try {
         if (typeof localStorage !== 'undefined' && localStorage.getItem(OG_CLEANUP_KEY)) return;
-        const KEEP = new Set(['OG Cola', 'OG Lemon', 'OG Orange', 'Sprite', 'Fanta Orange']);
+        const KEEP = new Set(['OG Cola', 'OG Lemon', 'OG Orange', 'Fanta Orange']);
         const snap = await getDocs(collection(db, 'products'));
         const toDelete = snap.docs.filter(d => !KEEP.has(d.data().name));
         if (toDelete.length === 0) { if (typeof localStorage !== 'undefined') localStorage.setItem(OG_CLEANUP_KEY, '1'); return; }

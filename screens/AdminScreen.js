@@ -110,7 +110,7 @@ export default function AdminScreen({ navigation, switchTab, editProduct }) {
     } catch { showToast('Price save nahi ho saka', 'error'); }
   };
 
-  const KEEP_NAMES = new Set(['OG Cola', 'OG Lemon', 'OG Orange', 'Sprite', 'Fanta Orange']);
+  const KEEP_NAMES = new Set(['OG Cola', 'OG Lemon', 'OG Orange', 'Fanta Orange']);
 
   const handleDeleteFromMirinda = async () => {
     const toDelete = products.filter(p => !KEEP_NAMES.has(p.name));
