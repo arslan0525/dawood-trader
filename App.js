@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, View, Text } from 'react-native';
+import { ActivityIndicator, View, Text, TouchableOpacity } from 'react-native';
 
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
   document.documentElement.style.cssText = 'height:100%;overflow:hidden;';
@@ -185,6 +185,40 @@ function AppNavigator() {
   );
 }
 
+function UpdateBanner() {
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof navigator === 'undefined') return;
+    const handler = (e) => {
+      if (e.data?.type === 'SW_UPDATED') setShow(true);
+    };
+    navigator.serviceWorker?.addEventListener('message', handler);
+    return () => navigator.serviceWorker?.removeEventListener('message', handler);
+  }, []);
+
+  if (!show) return null;
+
+  return (
+    <TouchableOpacity
+      onPress={() => window.location.reload()}
+      style={{
+        position: 'absolute', top: 0, left: 0, right: 0, zIndex: 9999,
+        backgroundColor: '#1a3a8f', paddingVertical: 10, paddingHorizontal: 16,
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      }}
+      activeOpacity={0.85}
+    >
+      <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>
+        🆕 Naya update available!
+      </Text>
+      <View style={{ backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 5 }}>
+        <Text style={{ color: '#1a3a8f', fontSize: 12, fontWeight: '800' }}>Update karein →</Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 export default function App() {
   return (
     <View style={{ flex: 1, ...(Platform.OS === 'web' ? { height: 'calc(var(--vh, 1vh) * 100)', overflow: 'hidden' } : {}) }}>
@@ -202,6 +236,7 @@ export default function App() {
           </AuthProvider>
         </LanguageProvider>
       </ToastProvider>
+      {Platform.OS === 'web' && <UpdateBanner />}
     </View>
   );
 }

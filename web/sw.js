@@ -1,7 +1,5 @@
-/* Dawood Trader — Service Worker v5
-   Fixed: .js substring was matching manifest.json — now uses exact extension match
-*/
-const CACHE_VER  = 'dt-v7';
+/* Dawood Trader — Service Worker v6 */
+const CACHE_VER  = 'dt-v8';
 const SHELL      = ['/', '/index.html', '/favicon.ico', '/manifest.json'];
 
 /* ── Install ── */
@@ -21,6 +19,12 @@ self.addEventListener('activate', e => {
         keys.filter(k => k !== CACHE_VER).map(k => caches.delete(k))
       ))
       .then(() => self.clients.claim())
+      .then(() => {
+        // Tell all open tabs: new version is active
+        self.clients.matchAll({ type: 'window' }).then(clients =>
+          clients.forEach(c => c.postMessage({ type: 'SW_UPDATED' }))
+        );
+      })
   );
 });
 
