@@ -154,7 +154,7 @@ export default function WebLayout({ navigation }) {
   const [activeTab,      setActiveTab]      = useState('Dashboard');
   const [tabProduct,     setTabProduct]     = useState(null);
   const [viewCustomerId, setViewCustomerId] = useState(null);
-  const [mountedTabs,    setMountedTabs]    = useState(() => new Set(['Dashboard','Home','Cart','Profile','Customers','NewOrder','OrderHistory','Recovery','Inventory']));
+  const [mountedTabs,    setMountedTabs]    = useState(() => new Set(['Dashboard']));
 
   // Navigation history stack for back button
   const [navHistory, setNavHistory]   = useState(['Dashboard']);
@@ -358,9 +358,11 @@ export default function WebLayout({ navigation }) {
 
         <View style={wl.mobileContent}>
           {CACHED_TABS.map(tab => (
-            <View key={tab} style={{ flex: 1, display: activeTab === tab ? 'flex' : 'none' }}>
-              {cachedScreens[tab]}
-            </View>
+            mountedTabs.has(tab) ? (
+              <View key={tab} style={{ flex: 1, display: activeTab === tab ? 'flex' : 'none' }}>
+                {cachedScreens[tab]}
+              </View>
+            ) : null
           ))}
           {activeTab === 'AddProduct' && (
             <View style={{ flex: 1 }}>
@@ -456,9 +458,11 @@ export default function WebLayout({ navigation }) {
         />
         <View style={wl.content}>
           {CACHED_TABS.map(tab => (
-            <View key={tab} style={{ flex: 1, display: activeTab === tab ? 'flex' : 'none' }}>
-              {cachedScreens[tab]}
-            </View>
+            mountedTabs.has(tab) ? (
+              <View key={tab} style={{ flex: 1, display: activeTab === tab ? 'flex' : 'none' }}>
+                {cachedScreens[tab]}
+              </View>
+            ) : null
           ))}
           {activeTab === 'AddProduct' && (
             <View style={{ flex: 1 }}>

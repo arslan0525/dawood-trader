@@ -137,13 +137,21 @@ export function AppDataProvider({ children }) {
       unsubs.push(unsub);
     };
 
-    listenCol('products',  setProducts);
-    listenCol('customers', setCustomers);
-    listenCol('orders',    setOrders);
-    listenCol('payments',  setPayments);
+    // Products + orders immediately (needed for main screens)
+    listenCol('products', setProducts);
+    listenCol('orders',   setOrders);
     setLoading(false);
 
-    return () => unsubs.forEach(u => u());
+    // Customers + payments deferred — not needed on first render
+    const deferTimer = setTimeout(() => {
+      listenCol('customers', setCustomers);
+      listenCol('payments',  setPayments);
+    }, 700);
+
+    return () => {
+      clearTimeout(deferTimer);
+      unsubs.forEach(u => u());
+    };
   }, []);
 
   // ── CUSTOMER CRUD ──────────────────────────────────────────

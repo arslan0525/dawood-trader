@@ -357,8 +357,12 @@ export default function HomeScreen({ navigation, switchTab }) {
     } catch { showToast('Update nahi ho saka', 'error'); }
   }, [showToast, updateProductDemo]);
 
-  const catCount = (cat) =>
-    cat === 'All' ? products.length : products.filter(p => p.category === cat).length;
+  const catCounts = useMemo(() => {
+    const counts = { All: products.length };
+    products.forEach(p => { counts[p.category] = (counts[p.category] || 0) + 1; });
+    return counts;
+  }, [products]);
+  const catCount = (cat) => catCounts[cat] || 0;
 
   /* Group + sort ASC (345ml → 2.25L) */
   const groups = useMemo(() => {
