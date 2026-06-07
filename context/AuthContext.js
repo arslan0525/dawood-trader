@@ -38,25 +38,24 @@ const MAGIC_LINK_SETTINGS = {
 };
 
 export function AuthProvider({ children }) {
-  const [user,        setUser]       = useState(null);
-  const [userRole,    setUserRole]   = useState(null); // 'owner' | 'salesman'
-  const [loading,     setLoading]    = useState(true);
+  // Firebase v12 with browserLocalPersistence populates auth.currentUser
+  // synchronously from localStorage — use it to skip the loading spinner
+  // for returning logged-in users
+  const _cached = IS_DEMO ? (loadSession() || null) : (auth.currentUser || null);
+
+  const [user,        setUser]       = useState(_cached);
+  const [userRole,    setUserRole]   = useState(null);
+  const [loading,     setLoading]    = useState(!_cached); // false → no spinner for returning users!
   const [magicSent,   setMagicSent]  = useState(false);
   const [avatar,      setAvatarState]= useState(loadAvatar);
 
-  // Fetch role from Firestore users/{uid}
-  const fetchRole = async (uid, email) => {
-    if (OWNER_EMAILS.includes(email)) { setUserRole('owner'); return; }
+  // Resolve role without touching React state — returns string
+  const resolveRole = async (uid, email) => {
+    if (OWNER_EMAILS.includes(email)) return 'owner';
     try {
       const snap = await getDoc(doc(db, 'users', uid));
-      if (snap.exists()) {
-        setUserRole(snap.data().role || 'salesman');
-      } else {
-        setUserRole('salesman');
-      }
-    } catch {
-      setUserRole('salesman');
-    }
+      return snap.exists() ? (snap.data().role || 'salesman') : 'salesman';
+    } catch { return 'salesman'; }
   };
 
   useEffect(() => {
@@ -87,12 +86,19 @@ export function AuthProvider({ children }) {
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (u) => {
-      setUser(u);
-      if (u) {
-        await fetchRole(u.uid, u.email);
-      } else {
+      if (!u) {
+        // Batch all 3 updates → single re-render
+        setUser(null);
         setUserRole(null);
+        setLoading(false);
+        return;
       }
+      // Compute role before touching state
+      // For owners: resolveRole returns instantly (no Firestore)
+      // For salesmen: one Firestore read, then all updates batched
+      const role = await resolveRole(u.uid, u.email);
+      setUser(u);
+      setUserRole(role);
       setLoading(false);
     });
     return unsubscribe;
