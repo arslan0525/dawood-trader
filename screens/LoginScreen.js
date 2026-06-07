@@ -7,7 +7,7 @@ import {
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../services/firebase';
-import { useAuth, ADMIN_EMAIL } from '../context/AuthContext';
+import { useAuth, OWNER_EMAILS } from '../context/AuthContext';
 
 const FEATURES = [
   { icon: '📦', text: 'Inventory & Stock Management' },
@@ -50,7 +50,7 @@ export default function LoginScreen({ navigation }) {
       const u    = cred.user;
 
       if (role === 'owner') {
-        if (u.email === ADMIN_EMAIL) {
+        if (OWNER_EMAILS.includes(u.email)) {
           overrideRole('owner');
         } else {
           try {

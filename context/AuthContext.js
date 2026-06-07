@@ -10,7 +10,8 @@ import { auth, db, IS_DEMO } from '../services/firebase';
 import { DEMO_USER, DEMO_ADMIN } from '../services/demoData';
 
 const AuthContext = createContext();
-export const ADMIN_EMAIL = 'sarslanameer@gmail.com';
+export const ADMIN_EMAIL  = 'sarslanameer@gmail.com';
+export const OWNER_EMAILS = ['sarslanameer@gmail.com', 'dawoodkhand5032@gmail.com'];
 
 const SESS_KEY       = 'dt_demo_v1';
 const ML_EMAIL_KEY   = 'dt_ml_email';
@@ -45,8 +46,7 @@ export function AuthProvider({ children }) {
 
   // Fetch role from Firestore users/{uid}
   const fetchRole = async (uid, email) => {
-    // Legacy admin email always gets owner role
-    if (email === ADMIN_EMAIL) { setUserRole('owner'); return; }
+    if (OWNER_EMAILS.includes(email)) { setUserRole('owner'); return; }
     try {
       const snap = await getDoc(doc(db, 'users', uid));
       if (snap.exists()) {
@@ -64,7 +64,7 @@ export function AuthProvider({ children }) {
       const saved = loadSession();
       if (saved) {
         setUser(saved);
-        setUserRole(saved.email === ADMIN_EMAIL ? 'owner' : 'salesman');
+        setUserRole(OWNER_EMAILS.includes(saved.email) ? 'owner' : 'salesman');
       }
       setLoading(false);
       return;
@@ -100,7 +100,7 @@ export function AuthProvider({ children }) {
 
   // ── Demo login ────────────────────────────────────────────
   const demoLogin = (email) => {
-    const u = email.trim().toLowerCase() === ADMIN_EMAIL ? DEMO_ADMIN : DEMO_USER;
+    const u = OWNER_EMAILS.includes(email.trim().toLowerCase()) ? DEMO_ADMIN : DEMO_USER;
     setUser(u);
     setUserRole(u.email === ADMIN_EMAIL ? 'owner' : 'salesman');
     saveSession(u);
@@ -161,7 +161,7 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const isAdmin  = userRole === 'owner' || user?.email === ADMIN_EMAIL;
+  const isAdmin  = userRole === 'owner' || OWNER_EMAILS.includes(user?.email);
   const avatarUrl = avatar || user?.photoURL || null;
 
   // Called from LoginScreen after role verification to immediately apply role
