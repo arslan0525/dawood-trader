@@ -75,7 +75,7 @@ export function AppDataProvider({ children }) {
     const unsubs = [];
 
     // One-time cleanup: sirf OG products bachao, baaki delete
-    const OG_CLEANUP_KEY = 'dt_og_cleanup_v2';
+    const OG_CLEANUP_KEY = 'dt_og_cleanup_v4';
     let cleanupRan = false;
     const runOgCleanup = async () => {
       if (cleanupRan) return;
