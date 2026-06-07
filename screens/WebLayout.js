@@ -9,7 +9,6 @@ import { useAuth }   from '../context/AuthContext';
 import { useCart }   from '../context/CartContext';
 import { useLang }   from '../context/LanguageContext';
 import { C }         from '../constants/theme';
-import InstallPWA, { InstallBanner } from '../components/InstallPWA';
 import AppLogo       from '../components/AppLogo';
 
 import HomeScreen            from './HomeScreen';
@@ -117,7 +116,6 @@ function TopBar({ activeTab, switchTab, user, itemCount, canGoBack, onBack }) {
         <Text style={wl.topBarTitle}>{meta.title}</Text>
       </View>
       <View style={wl.topBarRight}>
-        <InstallPWA />
         <LangToggle />
         <TouchableOpacity style={wl.topIconBtn} onPress={() => switchTab('Cart')}>
           <Text style={{ fontSize: 16 }}>🛒</Text>
@@ -298,7 +296,6 @@ export default function WebLayout({ navigation }) {
 
     return (
       <View style={wl.mobileRoot}>
-        <InstallBanner />
 
         {/* ── Top Header ── */}
         <View style={wl.mobileHeader}>
@@ -311,9 +308,6 @@ export default function WebLayout({ navigation }) {
               <Text style={wl.mobileBrandName}>Dawood Trader</Text>
               <Text style={wl.mobileBrandSub}>Distribution System</Text>
             </View>
-
-            {/* Install App */}
-            <InstallPWA compact />
 
             {/* Cart */}
             <TouchableOpacity style={wl.mobileIconBtn} onPress={() => goToTab('Cart')}>
@@ -392,7 +386,6 @@ export default function WebLayout({ navigation }) {
   ────────────────────────────────────────────────────────── */
   return (
     <View style={wl.root}>
-      <InstallBanner />
 
       {/* Sidebar */}
       <View style={wl.sidebar}>
