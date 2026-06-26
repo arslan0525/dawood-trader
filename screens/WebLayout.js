@@ -10,6 +10,7 @@ import { useCart }   from '../context/CartContext';
 import { useLang }   from '../context/LanguageContext';
 import { C }         from '../constants/theme';
 import AppLogo       from '../components/AppLogo';
+import InstallPWA    from '../components/InstallPWA';
 
 import HomeScreen            from './HomeScreen';
 import CartScreen            from './CartScreen';
@@ -117,6 +118,7 @@ function TopBar({ activeTab, switchTab, user, itemCount, canGoBack, onBack }) {
       </View>
       <View style={wl.topBarRight}>
         <LangToggle />
+        <InstallPWA />
         <TouchableOpacity style={wl.topIconBtn} onPress={() => switchTab('Cart')}>
           <Text style={{ fontSize: 16 }}>🛒</Text>
           {itemCount > 0 && (
@@ -318,6 +320,9 @@ export default function WebLayout({ navigation }) {
                 </View>
               )}
             </TouchableOpacity>
+
+            {/* Install PWA */}
+            <InstallPWA compact />
 
             {/* LOGOUT — always visible on mobile */}
             <TouchableOpacity style={wl.mobileLogoutBtn} onPress={handleLogout} activeOpacity={0.8}>
