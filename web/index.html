@@ -1,18 +1,29 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ur-PK">
   <head>
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
 
-    <!-- SEO -->
-    <title>Dawood Trader — Distribution & Billing System</title>
-    <meta name="description" content="Pakistan's premier Distribution, Inventory, Billing & Customer Management System. Manage routes, customers, orders, and recovery with ease." />
-    <meta name="keywords" content="dawood trader, distribution system, inventory management, billing system, Pakistan, wholesale, recovery management" />
-    <meta name="author" content="Dawood Trader" />
-    <meta name="robots" content="index, follow" />
+    <!-- ── Speed: preconnect Firebase & Google ── -->
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://firebase.googleapis.com" crossorigin />
+    <link rel="dns-prefetch" href="//firebaseapp.com" />
+    <link rel="dns-prefetch" href="//googleapis.com" />
 
-    <!-- PWA -->
+    <!-- ── SEO ── -->
+    <title>Dawood Trader — Distribution, Billing & Inventory System | Pakistan</title>
+    <meta name="description" content="Dawood Trader — Pakistan ka No.1 Distribution Management System. Orders, Recovery, Customer Routes, Inventory aur Billing sab ek jagah. DG Khan, Punjab." />
+    <meta name="keywords" content="dawood trader, distribution system pakistan, inventory management, billing system, recovery management, wholesale system, DG Khan, Punjab, orders management, customer management, route management, pakistani distribution software" />
+    <meta name="author" content="Arslan Shahani" />
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow" />
+    <meta name="geo.region" content="PK-PB" />
+    <meta name="geo.placename" content="DG Khan, Punjab, Pakistan" />
+    <meta name="language" content="Urdu, English" />
+
+    <!-- ── PWA ── -->
     <meta name="theme-color" content="#2563eb" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -20,35 +31,91 @@
     <meta name="apple-mobile-web-app-title" content="Dawood Trader" />
     <link rel="manifest" href="/manifest.json" />
 
-    <!-- Open Graph -->
+    <!-- ── Open Graph (Facebook, WhatsApp) ── -->
     <meta property="og:type"        content="website" />
     <meta property="og:url"         content="https://dawood-trader-kappa.vercel.app/" />
-    <meta property="og:title"       content="Dawood Trader — Distribution & Billing System" />
-    <meta property="og:description" content="Complete Distribution, Inventory, Billing & Customer Management System for Pakistan businesses." />
+    <meta property="og:title"       content="Dawood Trader — Distribution & Billing System Pakistan" />
+    <meta property="og:description" content="Pakistan ka complete Distribution, Inventory, Billing aur Customer Management System. Orders, Recovery, Routes sab ek app mein." />
     <meta property="og:site_name"   content="Dawood Trader" />
     <meta property="og:image"       content="https://dawood-trader-kappa.vercel.app/icon-512.png" />
+    <meta property="og:image:width"  content="512" />
+    <meta property="og:image:height" content="512" />
+    <meta property="og:locale"      content="ur_PK" />
+    <meta property="og:locale:alternate" content="en_PK" />
 
-    <!-- Twitter Card -->
+    <!-- ── Twitter Card ── -->
     <meta name="twitter:card"        content="summary_large_image" />
     <meta name="twitter:url"         content="https://dawood-trader-kappa.vercel.app/" />
-    <meta name="twitter:title"       content="Dawood Trader" />
-    <meta name="twitter:description" content="Distribution & Billing Management System" />
+    <meta name="twitter:title"       content="Dawood Trader — Distribution System Pakistan" />
+    <meta name="twitter:description" content="Orders, Recovery, Inventory aur Customer Management sab ek jagah. Pakistan ka best distribution software." />
     <meta name="twitter:image"       content="https://dawood-trader-kappa.vercel.app/icon-512.png" />
 
-    <!-- Canonical -->
+    <!-- ── Canonical ── -->
     <link rel="canonical" href="https://dawood-trader-kappa.vercel.app/" />
 
-    <!-- Favicon -->
+    <!-- ── Favicon ── -->
     <link rel="icon" href="/favicon.ico" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="512x512" href="/icon-512.png" />
+
+    <!-- ── JSON-LD Structured Data (Google ranking boost) ── -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Dawood Trader",
+      "alternateName": "DT Distribution System",
+      "description": "Pakistan ka complete Distribution, Inventory, Billing aur Customer Management System",
+      "url": "https://dawood-trader-kappa.vercel.app/",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web, Android, iOS",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "PKR"
+      },
+      "creator": {
+        "@type": "Person",
+        "name": "Arslan Shahani"
+      },
+      "featureList": [
+        "Distribution Management",
+        "Inventory Tracking",
+        "Customer Route Management",
+        "Order Billing System",
+        "Recovery Tracking",
+        "WhatsApp Bill Sharing",
+        "Business Dashboard"
+      ],
+      "inLanguage": ["ur", "en"],
+      "countriesSupported": "PK"
+    }
+    </script>
+
+    <!-- ── Capture beforeinstallprompt before React loads ── -->
+    <script>
+      window.__pwaPrompt = null;
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        window.__pwaPrompt = e;
+        window.dispatchEvent(new Event('pwa-installable'));
+      });
+      window.addEventListener('appinstalled', function() {
+        window.__pwaPrompt = null;
+        window.dispatchEvent(new Event('pwa-installed'));
+      });
+      // Fix Android PWA 100vh bug
+      function setVh() { document.documentElement.style.setProperty('--vh', (window.innerHeight * 0.01) + 'px'); }
+      setVh();
+      window.addEventListener('resize', setVh);
+    </script>
 
     <style id="expo-reset">
       html, body { height: 100%; margin: 0; padding: 0; }
       body { overflow: hidden; overscroll-behavior: none; }
-      /* --vh is set by JS to window.innerHeight/100 — fixes Android PWA 100vh bug */
       :root { --vh: 1vh; }
       #root { display: flex; height: calc(var(--vh, 1vh) * 100); flex: 1; }
-      /* Touch scroll fix for Android PWA */
       * { -webkit-overflow-scrolling: touch; }
       div[style*="overflow-y: scroll"],
       div[style*="overflow-y:scroll"],

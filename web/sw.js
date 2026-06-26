@@ -1,5 +1,5 @@
-/* Dawood Trader — Service Worker v6 */
-const CACHE_VER  = 'dt-v8';
+/* Dawood Trader — Service Worker v8 */
+const CACHE_VER  = 'dt-v9';
 const SHELL      = ['/', '/index.html', '/favicon.ico', '/manifest.json'];
 
 /* ── Install ── */
